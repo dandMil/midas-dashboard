@@ -1,0 +1,25 @@
+.asset-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #ddd;
+  }
+  
+  .asset-table th,
+  .asset-table td {
+    padding: 8px;
+    text-align: left;
+  }
+  
+  .asset-table th {
+    background-color: #f2f2f2;
+    color: #333;
+  }
+  
+  .asset-table tbody tr:nth-child(even) {
+    background-color: #6b6b6e;
+  }
+  
+  .asset-table tbody tr:hover {
+    background-color: #e9e9e9;
+  }
+  

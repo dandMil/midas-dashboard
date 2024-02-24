@@ -1,0 +1,32 @@
+/* dashboard.css */
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .search-bar {
+    margin-bottom: 20px;
+  }
+  
+  .search-result, .crypto-table {
+    width: 80%;
+    margin-bottom: 20px;
+  }
+  
+  .asset-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .asset-table th, .asset-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: left;
+  }
+  
+  .asset-table th {
+    background-color: #f2f2f2;
+  }
+  
