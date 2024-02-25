@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import AssetFetcher from './AssetFetcher.tsx';
-import AssetItem from './AssetItem.tsx';
-import './Dashboard.css'; // Import CSS file for styling
+import FetchedDataView from './FetchedDataView.tsx'; // Import the new component
+import './css/Dashboard.css'; // Import CSS file for styling
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,10 +16,9 @@ const Dashboard = () => {
       const response = await fetch(url);
       const jsonData = await response.json();
       console.log('JSON RESPONSE', jsonData);
-      const dataArray = Object.keys(jsonData).map(key => jsonData[key]);
 
       // Update state to store the fetched data
-      setFetchedData(dataArray);
+      setFetchedData(jsonData);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -59,28 +58,20 @@ const Dashboard = () => {
         />
         <label htmlFor="stock">Stock</label>
       </div>
+      {/* Display of fetched data */}
+      <div className="data-display">
+        {fetchedData ? (
+          <FetchedDataView data={fetchedData} /> // Render FetchedDataView component
+        ) : (
+          <p>No data available</p>
+        )}
+      </div>
+      
       {/* AssetFetcher component */}
       <div className="fetcher-view">
         <h2>Asset Fetcher</h2>
         <AssetFetcher />
       </div>
-      {/* Display of fetched data */}
-      {/* <div className="data-display">
-        {fetchedData ? (
-          fetchedData.map(asset => (
-            <AssetItem key={asset.id} asset={asset} />
-          ))
-        ) : (
-          <p>No data available</p>
-        )}
-      </div> */}
-      <div className="data-display">
-  {fetchedData ? (
-    <AssetItem data={fetchedData} />
-  ) : (
-    <p>No data available</p>
-  )}
-</div>
 
     </div>
   );

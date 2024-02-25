@@ -1,0 +1,36 @@
+.fetched-data-container {
+  margin-top: 20px;
+}
+
+.fetched-data-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.fetched-data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fetched-data-table th, .fetched-data-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.fetched-data-table th {
+  background-color: #f2f2f2;
+}
+
+.fetched-data-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.fetched-data-table tr:hover {
+  background-color: #ddd;
+}
+
+.fetched-data-table button {
+  padding: 5px 10px;
+  cursor: pointer;
+}

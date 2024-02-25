@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import './css/AssetItem.css'; // Import CSS file for styling
+import './css/FetchedDataView.css'; // Import CSS file for styling
 
-const AssetItem = ({ data }) => {
-
-    console.log('DATA IN ASSET ITEMS',data)
+const FetchedDataView = ({ data }) => {
   const [isInWatchlist, setIsInWatchlist] = useState(false); // State variable to track whether asset is in watchlist
 
   // Function to handle adding/removing asset from watchlist
-  const handleToggleWatchlist = async (name:string, type:string) => {
+  const handleToggleWatchlist = async (name, type) => {
     try {
       if (isInWatchlist) {
         // If asset is already in watchlist, call delete API
@@ -37,34 +35,32 @@ const AssetItem = ({ data }) => {
   };
 
   return (
-    <table className="asset-table">
+    <div className="fetched-data-container">
+      <h2 className="fetched-data-title">Fetched Data</h2>
+      <table className="fetched-data-table">
         <thead>
-            <tr>
-                <th>Name</th>
-                <th>Market Price</th>
-                <th>Market Signal</th>
-                <th>Market Date</th>
-                <th>Favorite</th>
-            </tr>
+          <tr>
+            <th>Name</th>
+            <th>Market Price</th>
+            <th>Signal</th>
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody>
-            {data.map((asset, index) => (
-                <tr key={index}>
-                    <td>{asset.name}</td>
-                    <td>{asset.marketPrice}</td>
-                    <td>{asset.signal}</td>
-                    <td>{asset.date}</td>
-                    <td>
-                        <button onClick={() => handleToggleWatchlist(asset.name, asset.type)}>
-                            {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                        </button>
-                    </td>
-                </tr>
-            ))}
+          <tr>
+            <td>{data.name}</td>
+            <td>{data.marketPrice}</td>
+            <td>{data.signal}</td>
+            <td>
+              <button onClick={() => handleToggleWatchlist(data.name, data.type)}>
+                {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+              </button>
+            </td>
+          </tr>
         </tbody>
-    </table>
-);
+      </table>
+    </div>
+  );
 };
 
-
-export default AssetItem;
+export default FetchedDataView;

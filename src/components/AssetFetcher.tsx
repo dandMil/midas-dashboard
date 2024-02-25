@@ -7,7 +7,7 @@ const AssetFetcher = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:8080/midas/crypto/get_all');
+        const response = await fetch('http://localhost:8080/midas/asset/get_watch_list');
         const jsonData = await response.json();
         console.log('JSON DATA',jsonData)
         console.log('JSON TYPE',typeof(jsonData))
