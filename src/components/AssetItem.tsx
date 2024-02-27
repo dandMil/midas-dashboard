@@ -55,7 +55,7 @@ const AssetItem = ({ data }) => {
                     <td>{asset.signal}</td>
                     <td>{asset.date}</td>
                     <td>
-                        <button onClick={() => handleToggleWatchlist(asset.name, asset.type)}>
+                        <button className = 'asset-button' onClick={() => handleToggleWatchlist(asset.name, asset.type)}>
                             {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
                         </button>
                     </td>

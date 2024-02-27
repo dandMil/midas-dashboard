@@ -1,3 +1,4 @@
+/* Existing styles */
 .App {
   text-align: center;
 }
@@ -14,14 +15,14 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: #151515;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  color: white;
+  color: #66ff66; /* Green text color */
 }
 
 .App-link {
@@ -35,4 +36,52 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* New styles for fetched data view */
+.fetched-data-container {
+  margin-top: 20px;
+}
+
+.fetched-data-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #66ff66; /* Green text color */
+}
+
+.fetched-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #000; /* Black background */
+}
+
+.fetched-data-table th, .fetched-data-table td {
+  border: 1px solid #66ff66; /* Green border */
+  padding: 8px;
+  text-align: left;
+  color: #66ff66; /* Green text color */
+}
+
+.fetched-data-table th {
+  background-color: #222; /* Darker background for headers */
+}
+
+.fetched-data-table tr:nth-child(even) {
+  background-color: #111; /* Darker background for even rows */
+}
+
+.fetched-data-table tr:hover {
+  background-color: #333; /* Darker background on hover */
+}
+
+.fetched-data-table button {
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #009933; /* Dark green button background */
+  border: none;
+  color: #fff; /* White text color */
+}
+
+.fetched-data-table button:hover {
+  background-color: #007a29; /* Darker green on hover */
 }

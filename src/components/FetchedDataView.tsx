@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
 
-const FetchedDataView = ({ data }) => {
-  const [isInWatchlist, setIsInWatchlist] = useState(false); // State variable to track whether asset is in watchlist
+const FetchedDataView = ({ searchData }) => {
+  const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
 
   // Function to handle adding/removing asset from watchlist
   const handleToggleWatchlist = async (name, type) => {
     try {
-      if (isInWatchlist) {
-        // If asset is already in watchlist, call delete API
+      // Check if the item is already in the watchlist
+      const isAlreadyInWatchlist = watchlistItems.some(item => item.name === name);
+
+      if (isAlreadyInWatchlist) {
+        // If item is already in watchlist, remove it
+        const updatedList = watchlistItems.filter(item => item.name !== name);
+        setWatchlistItems(updatedList);
+        // Call delete API if needed
         const response = await fetch(`http://localhost:8080/midas/asset/watch_list/${name}`, {
           method: 'DELETE',
         });
         // Handle response as needed
       } else {
-        // If asset is not in watchlist, call add API
+        // If item is not in watchlist, add it
+        const updatedList = [...watchlistItems, { name, type }];
+        setWatchlistItems(updatedList);
+        // Call add API if needed
         const response = await fetch('http://localhost:8080/midas/asset/watch_list/', {
           method: 'POST',
           headers: {
@@ -27,8 +36,6 @@ const FetchedDataView = ({ data }) => {
         });
         // Handle response as needed
       }
-      // Toggle the isInWatchlist state
-      setIsInWatchlist(prevState => !prevState);
     } catch (error) {
       console.error('Error toggling watchlist:', error);
     }
@@ -36,7 +43,6 @@ const FetchedDataView = ({ data }) => {
 
   return (
     <div className="fetched-data-container">
-      <h2 className="fetched-data-title">Fetched Data</h2>
       <table className="fetched-data-table">
         <thead>
           <tr>
@@ -47,16 +53,18 @@ const FetchedDataView = ({ data }) => {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>{data.name}</td>
-            <td>{data.marketPrice}</td>
-            <td>{data.signal}</td>
-            <td>
-              <button onClick={() => handleToggleWatchlist(data.name, data.type)}>
-                {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
-              </button>
-            </td>
-          </tr>
+          {searchData.map((item, index) => (
+            <tr key={index}>
+              <td>{item.name}</td>
+              <td>{item.marketPrice}</td>
+              <td>{item.signal}</td>
+              <td>
+                <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
+                  {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                </button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

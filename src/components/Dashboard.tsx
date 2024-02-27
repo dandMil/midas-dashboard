@@ -6,7 +6,7 @@ import './css/Dashboard.css'; // Import CSS file for styling
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [assetType, setAssetType] = useState('crypto'); // Default to 'crypto'
-  const [fetchedData, setFetchedData] = useState(null); // State variable to hold fetched data
+  const [searchedItems, setSearchedItems] = useState([]); // State variable to hold searched items
 
   const handleSearch = async () => {
     console.log(`Searching for ${searchTerm} with type ${assetType}`);
@@ -17,8 +17,9 @@ const Dashboard = () => {
       const jsonData = await response.json();
       console.log('JSON RESPONSE', jsonData);
 
-      // Update state to store the fetched data
-      setFetchedData(jsonData);
+      // Add searched item to the list of searched items
+      const newItem = { name: searchTerm, marketPrice: jsonData.marketPrice, signal: jsonData.signal };
+      setSearchedItems(prevItems => [...prevItems, newItem]);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -26,7 +27,6 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <h1 className="dashboard-title">Dashboard</h1>
       <div className="search-bar-container">
         <input
           type="text"
@@ -60,8 +60,8 @@ const Dashboard = () => {
       </div>
       {/* Display of fetched data */}
       <div className="data-display">
-        {fetchedData ? (
-          <FetchedDataView data={fetchedData} /> // Render FetchedDataView component
+        {searchedItems.length > 0 ? (
+          <FetchedDataView searchData={searchedItems} /> // Pass searched items to FetchedDataView component
         ) : (
           <p>No data available</p>
         )}
@@ -69,7 +69,6 @@ const Dashboard = () => {
       
       {/* AssetFetcher component */}
       <div className="fetcher-view">
-        <h2>Asset Fetcher</h2>
         <AssetFetcher />
       </div>
 
