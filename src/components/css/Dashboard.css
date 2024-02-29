@@ -1,0 +1,45 @@
+/* Dashboard.css */
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px; /* Adjust as needed */
+}
+
+.search-bar-container {
+  margin-bottom: 20px;
+}
+
+.search-bar {
+  padding: 8px;
+  border: 1px solid #00ff00; /* Green border */
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.search-button {
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #009933; /* Dark green button background */
+  border: none;
+  color: #fff; /* White text color */
+  border-radius: 4px;
+}
+
+.radio-buttons-container {
+  margin-bottom: 20px;
+}
+
+.radio-buttons-container input[type="radio"] {
+  margin-right: 5px;
+}
+
+.data-display {
+  width: 80%; /* Adjust width as needed */
+  margin-bottom: 20px;
+}
+
+.fetcher-view {
+  margin-top: 20px;
+}

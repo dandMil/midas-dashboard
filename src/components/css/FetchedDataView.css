@@ -1,0 +1,44 @@
+/* New styles for fetched data view */
+.fetched-data-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.fetched-data-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #66ff66; /* Green text color */
+}
+
+.fetched-data-content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.fetched-data-item {
+  flex: 0 0 calc(33.33% - 20px); /* Adjust width as needed */
+  margin: 10px;
+  padding: 20px;
+  border: 1px solid #66ff66; /* Green border */
+  background-color: #000; /* Black background */
+  color: #66ff66; /* Green text color */
+}
+
+.fetched-data-item:hover {
+  background-color: #333; /* Darker background on hover */
+}
+
+.fetched-data-item button {
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #009933; /* Dark green button background */
+  border: none;
+  color: #fff; /* White text color */
+}
+
+.fetched-data-item button:hover {
+  background-color: #007a29; /* Darker green on hover */
+}

@@ -1,0 +1,38 @@
+/* Asset table styles */
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+}
+
+.asset-table th,
+.asset-table td {
+  padding: 8px;
+  text-align: left;
+}
+
+.asset-table th {
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+.asset-table tbody tr:nth-child(even) {
+  background-color: #6b6b6e;
+}
+
+.asset-table tbody tr:hover {
+  background-color: #e9e9e9;
+}
+
+/* New styles for AssetItem component */
+.asset-button {
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #009933; /* Dark green button background */
+  border: none;
+  color: #fff; /* White text color */
+}
+
+.asset-button:hover {
+  background-color: #007a29; /* Darker green on hover */
+}
