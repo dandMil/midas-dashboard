@@ -25,7 +25,7 @@ const AssetFetcher = () => {
 
   return (
     <div>
-      <h1>Watchlist</h1>
+      <h1>Top Movers</h1>
       {loading ? (
         <p>Loading...</p>
       ) : (
