@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './css/AssetItem.css'; // Import CSS file for styling
 
-const AssetItem = ({ data: initialData }) => {
+const VolumeItem = ({ data: initialData }) => {
   const [data, setData] = useState(initialData); // State variable to store asset data
   const [currentPage, setCurrentPage] = useState(1); // State variable to track current page
 
@@ -49,6 +49,8 @@ const AssetItem = ({ data: initialData }) => {
                   <th>Market Price</th>
                   <th>Market Signal</th>
                   <th>Volume</th>
+                  <th>Daily Change</th>
+                  <th>Weekly Change</th>
                   <th>Market Date</th>
                   <th>Favorite</th>
               </tr>
@@ -60,7 +62,9 @@ const AssetItem = ({ data: initialData }) => {
                       <td>{asset.marketPrice}</td>
                       <td>{asset.signal}</td>
                       <td>{asset.volume}</td>
-                      <td>{asset.date}</td>
+                      <td>{asset.dailyIncrease}</td>
+                      <td>{asset.weeklyIncrease}</td>
+                      <td>{asset.lastUpdated}</td>
                       <td>
                           <button className='asset-button' onClick={() => handleToggleWatchlist(asset.name, asset.type)}>
                               Add to Watchlist
@@ -112,4 +116,4 @@ const AssetItem = ({ data: initialData }) => {
   );
 };
 
-export default AssetItem;
+export default VolumeItem;

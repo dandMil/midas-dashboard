@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AssetFetcher from './AssetFetcher.tsx';
 import FetchedDataView from './FetchedDataView.tsx'; // Import the new component
+import VolumeFetcher from './VolumeFetcher.tsx'
 import './css/Dashboard.css'; // Import CSS file for styling
 
 const Dashboard = () => {
@@ -67,6 +68,11 @@ const Dashboard = () => {
         )}
       </div>
       
+            {/* AssetFetcher component */}
+            <div className="fetcher-view">
+        <VolumeFetcher />
+      </div>
+
       {/* AssetFetcher component */}
       <div className="fetcher-view">
         <AssetFetcher />

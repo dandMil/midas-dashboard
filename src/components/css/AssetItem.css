@@ -25,7 +25,8 @@
 }
 
 /* New styles for AssetItem component */
-.asset-button {
+.asset-button,
+.pagination button {
   padding: 5px 10px;
   cursor: pointer;
   background-color: #009933; /* Dark green button background */
@@ -33,6 +34,12 @@
   color: #fff; /* White text color */
 }
 
-.asset-button:hover {
+.asset-button:hover,
+.pagination button:hover {
   background-color: #007a29; /* Darker green on hover */
+}
+
+/* Style for active page button */
+.pagination button.active {
+  background-color: #006622; /* Slightly darker green for active page */
 }
