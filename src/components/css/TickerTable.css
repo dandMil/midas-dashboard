@@ -1,0 +1,45 @@
+/* Ticker table styles */
+.ticker-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+}
+
+.ticker-table th,
+.ticker-table td {
+  padding: 8px;
+  text-align: left;
+}
+
+.ticker-table th {
+  background-color: #4d4b4b;
+  color: #333;
+}
+
+.ticker-table tbody tr:nth-child(even) {
+  background-color: #4d4b4b;
+}
+
+.ticker-table tbody tr:hover {
+  background-color: #4d4b4b;
+}
+
+/* New styles for TickerTable component */
+.ticker-button,
+.pagination button {
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #009933; /* Dark green button background */
+  border: none;
+  color: #fff; /* White text color */
+}
+
+.ticker-button:hover,
+.pagination button:hover {
+  background-color: #007a29; /* Darker green on hover */
+}
+
+/* Style for active page button */
+.pagination button.active {
+  background-color: #006622; /* Slightly darker green for active page */
+}

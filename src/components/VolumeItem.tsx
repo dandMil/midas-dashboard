@@ -47,7 +47,6 @@ const VolumeItem = ({ data: initialData }) => {
               <tr>
                   <th>Name</th>
                   <th>Market Price</th>
-                  <th>Market Signal</th>
                   <th>Volume</th>
                   <th>Daily Change</th>
                   <th>Weekly Change</th>
@@ -59,12 +58,11 @@ const VolumeItem = ({ data: initialData }) => {
               {data.slice((currentPage - 1) * 15, currentPage * 15).map((asset, index) => (
                   <tr key={index}>
                       <td>{asset.name}</td>
-                      <td>{asset.marketPrice}</td>
-                      <td>{asset.signal}</td>
+                      <td>{asset.price}</td>
                       <td>{asset.volume}</td>
                       <td>{asset.dailyIncrease}</td>
                       <td>{asset.weeklyIncrease}</td>
-                      <td>{asset.lastUpdated}</td>
+                      <td>{new Date(asset.dateCreated).toLocaleDateString('en-CA')}</td> {/* Convert date to YYYY-MM-DD format */}
                       <td>
                           <button className='asset-button' onClick={() => handleToggleWatchlist(asset.name, asset.type)}>
                               Add to Watchlist
