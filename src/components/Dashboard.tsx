@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import AssetFetcher from './AssetFetcher.tsx';
-import FetchedDataView from './FetchedDataView.tsx'; // Import the new component
+import FetchedDataView from './FetchedDataView.tsx';
+import VolumeFetcher from './VolumeFetcher.tsx';
+import TopMoverFetcher from './TopMoverFetcher.tsx'
+import StringListFetcher from './StringListFetcher.tsx';
 import './css/Dashboard.css'; // Import CSS file for styling
 
 const Dashboard = () => {
@@ -22,6 +25,26 @@ const Dashboard = () => {
       setSearchedItems(prevItems => [...prevItems, newItem]);
     } catch (error) {
       console.error('Error fetching data:', error);
+    }
+  };
+
+  const handleStringListFetch = async (strings: string[], startDate: string, endDate: string) => {
+    console.log(`Fetching data for strings: ${strings.join(', ')} from ${startDate} to ${endDate}`);
+    const url = `http://localhost:8080/api/your-endpoint`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ strings, startDate, endDate }),
+      });
+      const jsonData = await response.json();
+      console.log('Fetched data:', jsonData);
+      // Handle the response data
+    } catch (error) {
+      console.error('Error fetching string list data:', error);
     }
   };
 
@@ -66,12 +89,26 @@ const Dashboard = () => {
           <p>No data available</p>
         )}
       </div>
-      
-      {/* AssetFetcher component */}
+
+         {/* VolumeFetcher component */}
       <div className="fetcher-view">
-        <AssetFetcher />
+        <TopMoverFetcher />
+      </div>
+   
+      {/* VolumeFetcher component */}
+      <div className="fetcher-view">
+        <VolumeFetcher />
       </div>
 
+      {/* AssetFetcher component */}
+      {/* <div className="fetcher-view">
+        <AssetFetcher />
+      </div> */}
+
+      {/* StringListFetcher component */}
+      {/* <div className="fetcher-view">
+        <StringListFetcher onFetch={handleStringListFetch} />
+      </div> */}
     </div>
   );
 };
