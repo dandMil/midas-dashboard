@@ -21,7 +21,10 @@ const Dashboard = () => {
       console.log('JSON RESPONSE', jsonData);
 
       // Add searched item to the list of searched items
-      const newItem = { name: searchTerm, marketPrice: jsonData.marketPrice, signal: jsonData.signal };
+      const newItem = { name: searchTerm, marketPrice: jsonData.marketPrice, signal: jsonData.signal,
+        macd: jsonData.macd, priceRateOfChange: jsonData.priceRateOfChange, relativeStrengthIndex: jsonData.relativeStrengthIndex,
+        stochasticOscillator: jsonData.stochasticOscillator
+       };
       setSearchedItems(prevItems => [...prevItems, newItem]);
     } catch (error) {
       console.error('Error fetching data:', error);

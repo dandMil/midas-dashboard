@@ -4,6 +4,7 @@ import './css/FetchedDataView.css'; // Import CSS file for styling
 const FetchedDataView = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
 
+  console.log('SEARCHED DATA',searchData)
   // Function to handle adding/removing asset from watchlist
   const handleToggleWatchlist = async (name, type) => {
     try {
@@ -48,6 +49,10 @@ const FetchedDataView = ({ searchData }) => {
           <tr>
             <th>Name</th>
             <th>Market Price</th>
+            <th>MACD</th>
+            <th>Rate of Change</th>
+            <th>RSI</th>
+            <th>SO</th>
             <th>Signal</th>
             <th>Actions</th>
           </tr>
@@ -57,6 +62,10 @@ const FetchedDataView = ({ searchData }) => {
             <tr key={index}>
               <td>{item.name}</td>
               <td>{item.marketPrice}</td>
+              <td>{item.macd}</td>
+              <td>{item.priceRateOfChange}</td>
+              <td>{item.relativeStrengthIndex}</td>
+              <td>{item.stochasticOscillator}</td>
               <td>{item.signal}</td>
               <td>
                 <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
