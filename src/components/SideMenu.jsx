@@ -15,10 +15,9 @@ const SideMenu = () => {
     <div className="side-menu">
       <h2>Navigation Menu</h2>
       <ul>
-        <li className={activeMenuItem === 'Home' ? 'active' : ''} onClick={() => handleMenuItemClick('Home')}>Home</li>
-        <li className={activeMenuItem === 'About' ? 'active' : ''} onClick={() => handleMenuItemClick('About')}>About</li>
-        <li className={activeMenuItem === 'Services' ? 'active' : ''} onClick={() => handleMenuItemClick('Services')}>Services</li>
-        <li className={activeMenuItem === 'Contact' ? 'active' : ''} onClick={() => handleMenuItemClick('Contact')}>Contact</li>
+        <li className={activeMenuItem === 'Portfolio' ? 'active' : ''} onClick={() => handleMenuItemClick('Portfolio')}>Portfolio</li>
+        <li className={activeMenuItem === 'Watchlist' ? 'active' : ''} onClick={() => handleMenuItemClick('Watchlist')}>Watchlist</li>
+        <li className={activeMenuItem === 'Research' ? 'active' : ''} onClick={() => handleMenuItemClick('Research')}>Research</li>
       </ul>
     </div>
   );

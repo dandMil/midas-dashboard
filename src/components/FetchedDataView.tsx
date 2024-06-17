@@ -3,8 +3,10 @@ import './css/FetchedDataView.css'; // Import CSS file for styling
 
 const FetchedDataView = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
+  const [purchaseInfo, setPurchaseInfo] = useState({}); // State to hold purchase details
 
-  console.log('SEARCHED DATA',searchData)
+  console.log('SEARCHED DATA', searchData);
+
   // Function to handle adding/removing asset from watchlist
   const handleToggleWatchlist = async (name, type) => {
     try {
@@ -16,29 +18,54 @@ const FetchedDataView = ({ searchData }) => {
         const updatedList = watchlistItems.filter(item => item.name !== name);
         setWatchlistItems(updatedList);
         // Call delete API if needed
-        const response = await fetch(`http://localhost:8080/midas/asset/watch_list/${name}`, {
+        await fetch(`http://localhost:8080/midas/asset/watch_list/${name}`, {
           method: 'DELETE',
         });
-        // Handle response as needed
       } else {
         // If item is not in watchlist, add it
         const updatedList = [...watchlistItems, { name, type }];
         setWatchlistItems(updatedList);
         // Call add API if needed
-        const response = await fetch('http://localhost:8080/midas/asset/watch_list/', {
+        await fetch('http://localhost:8080/midas/asset/watch_list/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            name: name,
-            type: type,
-          }),
+          body: JSON.stringify({ name, type }),
         });
-        // Handle response as needed
       }
     } catch (error) {
       console.error('Error toggling watchlist:', error);
+    }
+  };
+
+  // Function to handle purchase action
+  const handlePurchaseClick = (name, price) => {
+    setPurchaseInfo({ ...purchaseInfo, [name]: { shares: '', price, showInput: true } });
+  };
+
+  // Function to handle change in the number of shares input
+  const handleSharesChange = (name, shares) => {
+    setPurchaseInfo({ ...purchaseInfo, [name]: { ...purchaseInfo[name], shares } });
+  };
+
+  // Function to handle confirm purchase action
+  const handleConfirmPurchase = async (name) => {
+    const { shares, price } = purchaseInfo[name];
+    try {
+      // Send POST request to the API
+      await fetch('http://localhost:8080/midas/asset/purchase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, shares: parseInt(shares, 10), price }),
+      });
+      // Clear the purchase info for the confirmed item
+      setPurchaseInfo({ ...purchaseInfo, [name]: { shares: '', price, showInput: false } });
+      alert(`Purchased ${shares} shares of ${name} at ${price}`);
+    } catch (error) {
+      console.error('Error making purchase:', error);
     }
   };
 
@@ -54,7 +81,8 @@ const FetchedDataView = ({ searchData }) => {
             <th>RSI</th>
             <th>SO</th>
             <th>Signal</th>
-            <th>Actions</th>
+            <th>Watch</th>
+            <th>Buy</th>
           </tr>
         </thead>
         <tbody>
@@ -71,6 +99,26 @@ const FetchedDataView = ({ searchData }) => {
                 <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
                   {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
                 </button>
+              </td>
+              <td>
+                {purchaseInfo[item.name]?.showInput ? (
+                  <>
+                    <input
+                      type="number"
+                      value={purchaseInfo[item.name].shares}
+                      onChange={(e) => handleSharesChange(item.name, e.target.value)}
+                      placeholder="Shares"
+                      className="input-box"
+                    />
+                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.name)}>
+                      Confirm
+                    </button>
+                  </>
+                ) : (
+                  <button className="search-button" onClick={() => handlePurchaseClick(item.name, item.marketPrice)}>
+                    Purchase
+                  </button>
+                )}
               </td>
             </tr>
           ))}
