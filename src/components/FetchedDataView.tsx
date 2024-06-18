@@ -76,10 +76,10 @@ const FetchedDataView = ({ searchData }) => {
           <tr>
             <th>Name</th>
             <th>Market Price</th>
-            <th>MACD</th>
-            <th>Rate of Change</th>
-            <th>RSI</th>
-            <th>SO</th>
+            <th title="MACD: Above 0 indicates bullish, below 0 indicates bearish">MACD</th>
+            <th title="Rate of Change: Above 0 indicates bullish, below 0 indicates bearish">Rate of Change</th>
+            <th title="RSI: Above 70 indicates overbought (bearish), below 30 indicates oversold (bullish)">RSI</th>
+            <th title="Stochastic Oscillator: Above 80 indicates overbought (bearish), below 20 indicates oversold (bullish)">SO</th>
             <th>Signal</th>
             <th>Watch</th>
             <th>Buy</th>

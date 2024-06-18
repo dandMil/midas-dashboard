@@ -1,0 +1,52 @@
+/* TradeRecommendations.css */
+.trade-recommendations-container {
+    margin: 20px;
+  }
+  
+  .trade-recommendations-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #000; /* Black background */
+    color: #66ff66; /* Green text color */
+  }
+  
+  .trade-recommendations-table th,
+  .trade-recommendations-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #66ff66; /* Green border */
+  }
+  
+  .trade-recommendations-table th {
+    background-color: #333; /* Darker background for headers */
+    color: #66ff66; /* Green text color */
+  }
+  
+  .trade-recommendations-table tr:nth-child(even) {
+    background-color: #222; /* Dark background for even rows */
+  }
+  
+  .trade-recommendations-table tr:nth-child(odd) {
+    background-color: #000; /* Black background for odd rows */
+  }
+  
+  .trade-recommendations-table tr:hover {
+    background-color: #333; /* Darker background on hover */
+  }
+  
+  .trade-recommendations-table th,
+  .trade-recommendations-table td {
+    color: #66ff66; /* Green text color */
+  }
+  
+  .trade-recommendations-table th:hover,
+  .trade-recommendations-table td:hover {
+    color: #fff; /* White text color on hover */
+  }
+  
+  .trade-recommendations-table .active,
+  .trade-recommendations-table tr:hover {
+    background-color: #333; /* Darker background on hover */
+    color: #fff; /* White text color for active row */
+  }
+  

@@ -99,9 +99,7 @@ const Dashboard = () => {
       </div>
    
       {/* VolumeFetcher component */}
-      <div className="fetcher-view">
-        <VolumeFetcher />
-      </div>
+
 
       {/* AssetFetcher component */}
       {/* <div className="fetcher-view">
