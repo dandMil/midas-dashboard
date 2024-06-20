@@ -4,7 +4,8 @@
   }
   
   .trade-recommendations-table {
-    width: 100%;
+    width: 80%; /* Set table width to 80% */
+    margin-left: 10%; /* Slightly shift the table to the left */
     border-collapse: collapse;
     background-color: #000; /* Black background */
     color: #66ff66; /* Green text color */
