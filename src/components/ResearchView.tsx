@@ -93,23 +93,6 @@ const Dashboard = () => {
         )}
       </div>
 
-         {/* VolumeFetcher component */}
-      <div className="fetcher-view">
-        <TopMoverFetcher />
-      </div>
-   
-      {/* VolumeFetcher component */}
-
-
-      {/* AssetFetcher component */}
-      {/* <div className="fetcher-view">
-        <AssetFetcher />
-      </div> */}
-
-      {/* StringListFetcher component */}
-      {/* <div className="fetcher-view">
-        <StringListFetcher onFetch={handleStringListFetch} />
-      </div> */}
     </div>
   );
 };

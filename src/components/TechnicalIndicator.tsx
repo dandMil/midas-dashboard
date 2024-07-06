@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
 
-const FetchedDataView = ({ searchData }) => {
+const TechnicalIndicator = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
   const [purchaseInfo, setPurchaseInfo] = useState({}); // State to hold purchase details
 
-  console.log('SEARCHED DATA', searchData);
+  console.log('TECHNICAL DATA', searchData);
 
   // Function to handle adding/removing asset from watchlist
   const handleToggleWatchlist = async (name, type) => {
@@ -74,48 +74,39 @@ const FetchedDataView = ({ searchData }) => {
       <table className="fetched-data-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Market Price</th>
             <th title="MACD: Above 0 indicates bullish, below 0 indicates bearish">MACD</th>
             <th title="Rate of Change: Above 0 indicates bullish, below 0 indicates bearish">Rate of Change</th>
             <th title="RSI: Above 70 indicates overbought (bearish), below 30 indicates oversold (bullish)">RSI</th>
             <th title="Stochastic Oscillator: Above 80 indicates overbought (bearish), below 20 indicates oversold (bullish)">SO</th>
             <th>Signal</th>
-            <th>Watch</th>
             <th>Buy</th>
           </tr>
         </thead>
         <tbody>
           {searchData.map((item, index) => (
             <tr key={index}>
-              <td>{item.name}</td>
-              <td>{item.marketPrice}</td>
               <td>{item.macd}</td>
               <td>{item.priceRateOfChange}</td>
               <td>{item.relativeStrengthIndex}</td>
               <td>{item.stochasticOscillator}</td>
               <td>{item.signal}</td>
+
               <td>
-                <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
-                  {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                </button>
-              </td>
-              <td>
-                {purchaseInfo[item.name]?.showInput ? (
+                {purchaseInfo[item.ticker]?.showInput ? (
                   <>
                     <input
                       type="number"
-                      value={purchaseInfo[item.name].shares}
-                      onChange={(e) => handleSharesChange(item.name, e.target.value)}
+                      value={purchaseInfo[item.ticker].shares}
+                      onChange={(e) => handleSharesChange(item.ticker, e.target.value)}
                       placeholder="Shares"
                       className="input-box"
                     />
-                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.name)}>
+                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.ticker)}>
                       Confirm
                     </button>
                   </>
                 ) : (
-                  <button className="search-button" onClick={() => handlePurchaseClick(item.name, item.marketPrice)}>
+                  <button className="search-button" onClick={() => handlePurchaseClick(item.ticker, item.marketPrice)}>
                     Purchase
                   </button>
                 )}
@@ -128,4 +119,4 @@ const FetchedDataView = ({ searchData }) => {
   );
 };
 
-export default FetchedDataView;
+export default TechnicalIndicator;
