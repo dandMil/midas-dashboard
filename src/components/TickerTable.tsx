@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './css/TickerTable.css'; // Import CSS file for styling
 import TechnicalIndicator from './TechnicalIndicator.tsx'; // Import the TechnicalIndicator component
-
+import StockChart from './Chart.tsx';
 interface DayData {
     o: number;
     h: number;
@@ -84,11 +84,19 @@ const TickerTable: React.FC<PolygonResponse> = ({ data: tickers }) => {
                             <td>{tickerData.day.vw.toFixed(2)}</td>
                         </tr>
                         {expandedRows[tickerData.ticker] && indicatorData[tickerData.ticker] && (
-                <tr>
+                        <>
+
+             <tr>
                   <td colSpan="9">
                     <TechnicalIndicator searchData={[indicatorData[tickerData.ticker]]} /> {/* Pass the specific asset data to TechnicalIndicator */}
                   </td>
                 </tr>
+                                  <tr>
+                                  <td colSpan="9">
+                                    <StockChart ticker={tickerData.ticker} timeRange={1} />
+                                  </td>
+                                </tr>
+                                </>
               )}
             </React.Fragment>
 

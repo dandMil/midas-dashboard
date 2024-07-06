@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Portfolio.css'; // Import CSS file for styling
 import TechnicalIndicator from './TechnicalIndicator.tsx'; // Import the TechnicalIndicator component
+import StockChart from './Chart.tsx'; // Import the StockChart component
 
 const Portfolio = () => {
   const [recommendations, setRecommendations] = useState([]);
@@ -81,11 +82,18 @@ const Portfolio = () => {
                 <td>{rec.strategy}</td>
               </tr>
               {expandedRows[rec.ticker] && indicatorData[rec.ticker] && (
-                <tr>
-                  <td colSpan="9">
-                    <TechnicalIndicator searchData={[indicatorData[rec.ticker]]} /> {/* Pass the specific asset data to TechnicalIndicator */}
-                  </td>
-                </tr>
+                <>
+                  <tr>
+                    <td colSpan="9">
+                      <TechnicalIndicator searchData={[indicatorData[rec.ticker]]} />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan="9">
+                      <StockChart ticker={rec.ticker} timeRange={1} />
+                    </td>
+                  </tr>
+                </>
               )}
             </React.Fragment>
           ))}

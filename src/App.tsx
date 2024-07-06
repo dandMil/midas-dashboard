@@ -7,7 +7,7 @@ import AssetFetcher from './components/AssetFetcher.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import SideMenu from './components/SideMenu';
 import TradeRecommendations from './components/Portfolio.tsx';
-
+import ResearchView from './components/ResearchView.tsx';
 function App() {
   return (
     <Router>
@@ -22,7 +22,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/portfolio" element={<TradeRecommendations />} />
             <Route path="/watchlist" element={<AssetFetcher />} />
-            <Route path="/research" element={<div>Research Component</div>} />
+            <Route path="/research" element={<ResearchView/>} />
             {/* Add other routes as needed */}
           </Routes>
         </header>
