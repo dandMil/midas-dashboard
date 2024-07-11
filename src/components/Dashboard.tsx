@@ -53,63 +53,16 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <div className="search-bar-container">
-        <input
-          type="text"
-          className="search-bar"
-          placeholder="Enter search term"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <button className="search-button" onClick={handleSearch}>Search</button>
-      </div>
-      <div className="radio-buttons-container">
-        <input
-          type="radio"
-          id="crypto"
-          name="assetType"
-          value="crypto"
-          checked={assetType === 'crypto'}
-          onChange={() => setAssetType('crypto')}
-        />
-        <label htmlFor="crypto">Crypto</label>
 
-        <input
-          type="radio"
-          id="stock"
-          name="assetType"
-          value="stock"
-          checked={assetType === 'stock'}
-          onChange={() => setAssetType('stock')}
-        />
-        <label htmlFor="stock">Stock</label>
-      </div>
       {/* Display of fetched data */}
-      <div className="data-display">
-        {searchedItems.length > 0 ? (
-          <FetchedDataView searchData={searchedItems} /> // Pass searched items to FetchedDataView component
-        ) : (
-          <p>No data available</p>
-        )}
-      </div>
+
 
          {/* VolumeFetcher component */}
       <div className="fetcher-view">
         <TopMoverFetcher />
       </div>
    
-      {/* VolumeFetcher component */}
 
-
-      {/* AssetFetcher component */}
-      {/* <div className="fetcher-view">
-        <AssetFetcher />
-      </div> */}
-
-      {/* StringListFetcher component */}
-      {/* <div className="fetcher-view">
-        <StringListFetcher onFetch={handleStringListFetch} />
-      </div> */}
     </div>
   );
 };
