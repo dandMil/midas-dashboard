@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AssetFetcher from './AssetFetcher.tsx';
+import AssetFetcher from '../pages/Portfolio/Watchlist/Watchlist.tsx';
 import FetchedDataView from './FetchedDataView.tsx';
 import VolumeFetcher from './VolumeFetcher.tsx';
 import TopMoverFetcher from './TopMoverFetcher.tsx'

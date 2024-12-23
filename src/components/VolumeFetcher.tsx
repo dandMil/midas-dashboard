@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AssetItem from './AssetItem.tsx';
+import AssetItem from '../pages/Portfolio/Watchlist/components/WatchlistItem.tsx';
 import VolumeItem from './VolumeItem.tsx';
 const AssetFetcher = () => {
   const [data, setData] = useState(null);
