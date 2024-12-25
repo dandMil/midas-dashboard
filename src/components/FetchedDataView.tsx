@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
+import StockChart from './Chart.tsx';
 
 const FetchedDataView = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
   const [purchaseInfo, setPurchaseInfo] = useState({}); // State to hold purchase details
+  const [expandedRows, setExpandedRows] = useState({}); // State to track expanded rows
+  const [indicatorData, setIndicatorData] = useState({}); // State to store indicator data
 
   console.log('SEARCHED DATA', searchData);
 
@@ -69,6 +72,58 @@ const FetchedDataView = ({ searchData }) => {
     }
   };
 
+  const handleRowClick = async (ticker) => {
+    setExpandedRows((prevExpandedRows) => ({
+      ...prevExpandedRows,
+      [ticker]: !prevExpandedRows[ticker], // Toggle the expansion state
+    }));
+
+    if (!expandedRows[ticker]) {
+      try {
+        const response = await fetch(`http://localhost:8080/midas/asset/get_signal/${ticker}/stock`);
+        const jsonData = await response.json();
+        setIndicatorData((prevData) => ({
+          ...prevData,
+          [ticker]: jsonData,
+        }));
+      } catch (error) {
+        console.error(`Error fetching indicator data for ${ticker}:`, error);
+      }
+    }
+  };
+
+  const getStyle = (value, type) => {
+    let isBearish = false;
+    let isNeutral = false;
+    switch (type) {
+      case 'MACD':
+        isBearish = value < 0;
+        isNeutral = value === 0;
+        break;
+      case 'Rate of Change':
+        isBearish = value < 0;
+        isNeutral = value === 0;
+        break;
+      case 'RSI':
+        isBearish = value > 70;
+        isNeutral = value >= 30 && value <= 70;
+        break;
+      case 'SO':
+        isBearish = value > 80;
+        isNeutral = value >= 20 && value <= 80;
+        break;
+      default:
+        break;
+    }
+    if (isBearish) {
+      return { color: 'red' };
+    } else if (isNeutral) {
+      return { color: 'blue' };
+    } else {
+      return {};
+    }
+  };
+
   return (
     <div className="fetched-data-container">
       <table className="fetched-data-table">
@@ -87,40 +142,49 @@ const FetchedDataView = ({ searchData }) => {
         </thead>
         <tbody>
           {searchData.map((item, index) => (
-            <tr key={index}>
-              <td>{item.name}</td>
-              <td>{item.marketPrice}</td>
-              <td>{item.macd}</td>
-              <td>{item.priceRateOfChange}</td>
-              <td>{item.relativeStrengthIndex}</td>
-              <td>{item.stochasticOscillator}</td>
-              <td>{item.signal}</td>
-              <td>
-                <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
-                  {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                </button>
-              </td>
-              <td>
-                {purchaseInfo[item.name]?.showInput ? (
-                  <>
-                    <input
-                      type="number"
-                      value={purchaseInfo[item.name].shares}
-                      onChange={(e) => handleSharesChange(item.name, e.target.value)}
-                      placeholder="Shares"
-                      className="input-box"
-                    />
-                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.name)}>
-                      Confirm
-                    </button>
-                  </>
-                ) : (
-                  <button className="search-button" onClick={() => handlePurchaseClick(item.name, item.marketPrice)}>
-                    Purchase
+            <React.Fragment key={index}>
+              <tr onClick={() => handleRowClick(item.name)}>
+                <td>{item.name}</td>
+                <td>{item.marketPrice}</td>
+                <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
+                <td style={getStyle(item.priceRateOfChange, 'Rate of Change')}>{item.priceRateOfChange}</td>
+                <td style={getStyle(item.relativeStrengthIndex, 'RSI')}>{item.relativeStrengthIndex}</td>
+                <td style={getStyle(item.stochasticOscillator, 'SO')}>{item.stochasticOscillator}</td>
+                <td>{item.signal}</td>
+                <td>
+                  <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
+                    {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
                   </button>
-                )}
-              </td>
-            </tr>
+                </td>
+                <td>
+                  {purchaseInfo[item.name]?.showInput ? (
+                    <>
+                      <input
+                        type="number"
+                        value={purchaseInfo[item.name].shares}
+                        onChange={(e) => handleSharesChange(item.name, e.target.value)}
+                        placeholder="Shares"
+                        className="input-box"
+                      />
+                      <button className="confirm-button" onClick={() => handleConfirmPurchase(item.name)}>
+                        Confirm
+                      </button>
+                    </>
+                  ) : (
+                    <button className="search-button" onClick={() => handlePurchaseClick(item.name, item.marketPrice)}>
+                      Purchase
+                    </button>
+                  )}
+                </td>
+              </tr>
+              {expandedRows[item.name] && (
+                <tr>
+                  <td colSpan="9">
+                    <StockChart ticker={item.name} timeRange={1} />
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </table>

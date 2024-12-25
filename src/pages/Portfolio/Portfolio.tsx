@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Portfolio.css'; // Import CSS file for styling
-import TechnicalIndicator from './TechnicalIndicator.tsx'; // Import the TechnicalIndicator component
-import StockChart from './Chart.tsx'; // Import the StockChart component
+import TechnicalIndicator from '../../components/TechnicalIndicator.tsx'; // Import the TechnicalIndicator component
+import StockChart from '../../components/Chart.tsx'; // Import the StockChart component
+import { fetchRecommendations, fetchIndicatorData } from '../../services/api.tsx'; // Import API functions
 
 const Portfolio = () => {
   const [recommendations, setRecommendations] = useState([]);
@@ -9,28 +10,19 @@ const Portfolio = () => {
   const [indicatorData, setIndicatorData] = useState({}); // State to store indicator data
 
   useEffect(() => {
-    // Fetch trade recommendations from the API
-    const fetchRecommendations = async () => {
+    const loadRecommendations = async () => {
       try {
-        const response = await fetch('http://localhost:8080/midas/asset/get_portfolio');
-        const data = await response.json();
-        // Extract and transform the data to fit the table's requirements
-        const transformedData = data.map(item => ({
-          ticker: item.ticker,
-          shares: item.shares,
-          currentPrice: item.currentPrice,
-          ...item.tradeRecommendation,
-        }));
-        setRecommendations(transformedData);
+        const data = await fetchRecommendations();
+        setRecommendations(data);
       } catch (error) {
-        console.error('Error fetching trade recommendations:', error);
+        console.error('Error loading recommendations:', error);
       }
     };
 
-    fetchRecommendations();
+    loadRecommendations();
   }, []);
 
-  const handleRowClick = async (ticker) => {
+  const handleRowClick = async (ticker: string) => {
     setExpandedRows((prevExpandedRows) => ({
       ...prevExpandedRows,
       [ticker]: !prevExpandedRows[ticker], // Toggle the expansion state
@@ -38,8 +30,7 @@ const Portfolio = () => {
 
     if (!expandedRows[ticker]) {
       try {
-        const response = await fetch(`http://localhost:8080/midas/asset/get_signal/${ticker}/stock`);
-        const jsonData = await response.json();
+        const jsonData = await fetchIndicatorData(ticker);
         setIndicatorData((prevData) => ({
           ...prevData,
           [ticker]: jsonData,
@@ -84,12 +75,12 @@ const Portfolio = () => {
               {expandedRows[rec.ticker] && indicatorData[rec.ticker] && (
                 <>
                   <tr>
-                    <td colSpan="9">
+                    <td colSpan={9}>
                       <TechnicalIndicator searchData={[indicatorData[rec.ticker]]} />
                     </td>
                   </tr>
                   <tr>
-                    <td colSpan="9">
+                    <td colSpan={9}>
                       <StockChart ticker={rec.ticker} timeRange={1} />
                     </td>
                   </tr>

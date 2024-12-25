@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import AssetFetcher from './AssetFetcher.tsx';
+import AssetFetcher from '../pages/Portfolio/Watchlist/Watchlist.tsx';
 import FetchedDataView from './FetchedDataView.tsx';
 import VolumeFetcher from './VolumeFetcher.tsx';
 import TopMoverFetcher from './TopMoverFetcher.tsx'
 import StringListFetcher from './StringListFetcher.tsx';
+import StockChart from './Chart.tsx';
+
 import './css/Dashboard.css'; // Import CSS file for styling
 
 const Dashboard = () => {

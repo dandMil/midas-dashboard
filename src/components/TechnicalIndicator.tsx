@@ -69,6 +69,39 @@ const TechnicalIndicator = ({ searchData }) => {
     }
   };
 
+  // Helper function to get the style based on the value
+  const getStyle = (value, type) => {
+    let isBearish = false;
+    let isNeutral = false;
+    switch (type) {
+      case 'MACD':
+        isBearish = value < 0;
+        isNeutral = value === 0;
+        break;
+      case 'Rate of Change':
+        isBearish = value < 0;
+        isNeutral = value === 0;
+        break;
+      case 'RSI':
+        isBearish = value > 70;
+        isNeutral = value >= 30 && value <= 70;
+        break;
+      case 'SO':
+        isBearish = value > 80;
+        isNeutral = value >= 20 && value <= 80;
+        break;
+      default:
+        break;
+    }
+    if (isBearish) {
+      return { color: 'red' };
+    } else if (isNeutral) {
+      return { color: 'blue' };
+    } else {
+      return {};
+    }
+  };
+
   return (
     <div className="fetched-data-container">
       <table className="fetched-data-table">
@@ -85,12 +118,11 @@ const TechnicalIndicator = ({ searchData }) => {
         <tbody>
           {searchData.map((item, index) => (
             <tr key={index}>
-              <td>{item.macd}</td>
-              <td>{item.priceRateOfChange}</td>
-              <td>{item.relativeStrengthIndex}</td>
-              <td>{item.stochasticOscillator}</td>
+              <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
+              <td style={getStyle(item.priceRateOfChange, 'Rate of Change')}>{item.priceRateOfChange}</td>
+              <td style={getStyle(item.relativeStrengthIndex, 'RSI')}>{item.relativeStrengthIndex}</td>
+              <td style={getStyle(item.stochasticOscillator, 'SO')}>{item.stochasticOscillator}</td>
               <td>{item.signal}</td>
-
               <td>
                 {purchaseInfo[item.ticker]?.showInput ? (
                   <>
