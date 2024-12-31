@@ -1,31 +1,29 @@
 // App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import logo from './logo.svg';
 import './App.css';
 import AssetFetcher from './pages/Portfolio/Watchlist/Watchlist.tsx';
-import Dashboard from './components/Dashboard.tsx';
-import SideMenu from './components/SideMenu';
+import Dashboard from './components/AnalyticsComponent.tsx';
+import TopMenu from './components/TopMenu.jsx';
 import TradeRecommendations from './pages/Portfolio/Portfolio.tsx';
 import ResearchView from './components/ResearchView.tsx';
+import AnalyticsView from './components/AnalyticsView.tsx';
 function App() {
   return (
     <Router>
       <div className="App">
-        <SideMenu />
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            {"Midas Analytics"}
-          </p>
+        {/* Include the TopMenu at the top */}
+        <TopMenu />
+        <main className="App-main">
+          {/* Define routes for different pages */}
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<AnalyticsView />} />
             <Route path="/portfolio" element={<TradeRecommendations />} />
             <Route path="/watchlist" element={<AssetFetcher />} />
-            <Route path="/research" element={<ResearchView/>} />
+            <Route path="/research" element={<ResearchView />} />
             {/* Add other routes as needed */}
           </Routes>
-        </header>
+        </main>
       </div>
     </Router>
   );

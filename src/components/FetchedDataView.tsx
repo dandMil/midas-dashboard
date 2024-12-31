@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
 import StockChart from './Chart.tsx';
+import LlmPlugin from './LlmPlugin.tsx';
 
 const FetchedDataView = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
@@ -182,8 +183,12 @@ const FetchedDataView = ({ searchData }) => {
                   <td colSpan="9">
                     <StockChart ticker={item.name} timeRange={1} />
                   </td>
+                  <LlmPlugin/>
+
                 </tr>
+      
               )}
+          
             </React.Fragment>
           ))}
         </tbody>

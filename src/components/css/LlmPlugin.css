@@ -1,0 +1,60 @@
+.chatgpt-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-color: #000; /* Match the theme */
+    color: #66ff66;
+  }
+  
+  .chatgpt-textarea {
+    width: 90%; /* Increased width */
+    height: 200px; /* Increased height for better usability */
+    padding: 15px; /* Added padding for comfortable typing */
+    font-size: 16px; /* Increased font size */
+    border: 2px solid #66ff66; /* Green border to match theme */
+    border-radius: 8px;
+    background-color: #000; /* Match theme */
+    color: #fff;
+    margin-bottom: 20px; /* Space below textarea */
+    resize: vertical; /* Allow vertical resizing */
+  }
+  
+  .chatgpt-button {
+    padding: 10px 20px;
+    font-size: 18px; /* Slightly larger button text */
+    background-color: #66ff66;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .chatgpt-button:disabled {
+    background-color: #4cb04c; /* Slightly darker green for disabled state */
+    cursor: not-allowed;
+  }
+  
+  .chatgpt-response {
+    width: 90%; /* Increased width */
+    margin-top: 20px; /* Space above response */
+    padding: 15px;
+    font-size: 16px; /* Increased font size */
+    border: 2px solid #66ff66; /* Green border */
+    border-radius: 8px;
+    background-color: #000; /* Match theme */
+    color: #fff;
+  }
+  
+  .chatgpt-response h3 {
+    margin-bottom: 10px;
+    font-size: 20px; /* Slightly larger heading */
+  }
+  
+  .chatgpt-response p {
+    font-size: 16px;
+    line-height: 1.5; /* Improved readability */
+    margin: 0;
+  }
+  

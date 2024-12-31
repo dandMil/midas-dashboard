@@ -1,5 +1,6 @@
 const BASE_URL = 'http://localhost:8080/midas/asset';
 
+const ANALYTICS_URL = 'http:/localhost:5000/query'
 /**
  * Fetch recommendations from the portfolio API.
  * @returns {Promise<any[]>} Transformed recommendation data.
@@ -75,6 +76,63 @@ export const fetchRepeatedMovers = async (): Promise<string[]> => {
     return await response.json();
   } catch (error) {
     console.error('Error fetching repeated movers:', error);
+    throw error;
+  }
+};
+
+
+export const queryLlm = async (payload: Record<string, any>): Promise<any> => {
+  try {
+    const API_URL = "http://localhost:5000/query"; // Use absolute URL
+
+    console.log('RETRIEVED PAYLOAD ',payload)
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error processing LLM request: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data; // Ensure JSON is parsed and returned
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    throw error;
+  }
+};
+
+
+
+export const queryTopMovers = async (mover?: string): Promise<any> => {
+  try {
+    // Build the URL with an optional query parameter
+    let url = 'http://localhost:8080/midas/asset/top_movers';
+    if (mover) {
+      url += `?mover=${encodeURIComponent(mover)}`;
+    }
+
+    // Make the fetch request
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Handle errors
+    if (!response.ok) {
+      throw new Error(`Error fetching top movers: ${response.statusText}`);
+    }
+
+    // Return the parsed JSON response
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching top movers:', error);
     throw error;
   }
 };

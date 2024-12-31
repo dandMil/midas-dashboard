@@ -1,0 +1,75 @@
+/* TopMenu.css */
+.top-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #1a1a1a; /* Dark theme background */
+  color: #66ff66; /* Bright green text */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.app-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #66ff66;
+  cursor: pointer;
+}
+
+.center-section {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-button {
+  background-color: transparent;
+  border: none;
+  color: #66ff66;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 5px 10px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.nav-button:hover {
+  background-color: #333;
+  color: white;
+  border-radius: 5px;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.search-bar {
+  width: 250px;
+  padding: 5px 10px;
+  border: 1px solid #66ff66;
+  border-radius: 5px;
+  background-color: #1a1a1a;
+  color: #66ff66;
+}
+
+.search-bar::placeholder {
+  color: #66ff66;
+}
+
+.theme-toggle, .login-button {
+  background-color: #333;
+  border: 1px solid #66ff66;
+  color: #66ff66;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.theme-toggle:hover, .login-button:hover {
+  background-color: #66ff66;
+  color: black;
+}

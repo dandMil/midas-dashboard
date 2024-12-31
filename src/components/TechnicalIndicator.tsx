@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
+import LlmPlugin from './LlmPlugin.tsx';
 
 const TechnicalIndicator = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
@@ -143,6 +144,10 @@ const TechnicalIndicator = ({ searchData }) => {
                   </button>
                 )}
               </td>
+              <td>
+                    <LlmPlugin />
+
+                    </td>
             </tr>
           ))}
         </tbody>

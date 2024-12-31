@@ -8,7 +8,7 @@ import StockChart from './Chart.tsx';
 
 import './css/Dashboard.css'; // Import CSS file for styling
 
-const Dashboard = () => {
+const ReserchView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [assetType, setAssetType] = useState('crypto'); // Default to 'crypto'
   const [searchedItems, setSearchedItems] = useState([]); // State variable to hold searched items
@@ -56,6 +56,12 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="search-bar-container">
+        <br>
+        </br>
+        <br>
+        </br>
+        <br>
+        </br>
         <input
           type="text"
           className="search-bar"
@@ -99,4 +105,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default ReserchView;
