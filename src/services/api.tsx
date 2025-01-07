@@ -136,3 +136,26 @@ export const queryTopMovers = async (mover?: string): Promise<any> => {
     throw error;
   }
 };
+
+
+
+export const scrapeReddit = async (lookback: string): Promise<any> => {
+  try {
+    const response = await fetch(`http://localhost:5000/fetch_shorts?lookback=${lookback}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error fetching data: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.data; // Return the JSON data from the response
+  } catch (error) {
+    console.error('Error during Reddit scraping:', error);
+    throw error;
+  }
+};

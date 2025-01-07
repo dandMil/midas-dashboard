@@ -4,6 +4,7 @@ import FetchedDataView from './FetchedDataView.tsx';
 import VolumeFetcher from './VolumeFetcher.tsx';
 import TopMoverFetcher from './TopMoverFetcher.tsx'
 import StringListFetcher from './StringListFetcher.tsx';
+import ShortsView from './ShortsView.tsx';
 import {Card, Select} from 'antd';
 
 
@@ -27,6 +28,8 @@ const Dashboard = () => {
           return <TopMoverFetcher mover="loser"/>;
           case 'RepeatedTopMovers':
             return <TopMoverFetcher mover = "gainer" />;
+          case 'Shorts':
+            return <ShortsView  />;
     }
   }
 
@@ -61,6 +64,9 @@ const Dashboard = () => {
         </Option>
         <Option value="RepeatedTopMovers" label="Repeated Top Movers">
           <span style={{ color: '#66ff66' }}>Repeated Top Movers</span>
+        </Option>
+        <Option value="Shorts" label="Shorts">
+          <span style={{ color: '#66ff66' }}>Shorts</span>
         </Option>
       </Select>
       <div style={{ marginTop: '20px' }}>
