@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AssetItem from './components/WatchlistItem.tsx';
-import { fetchWatchlist,fetchRepeatedMovers } from '../../../services/api.tsx'; // Import the API function
+import { fetchRepeatedMovers } from '../../../services/api.tsx'; // Import the API function
 import '../../../css/theme.css';
 
 const AssetFetcher = () => {
