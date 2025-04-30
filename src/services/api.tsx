@@ -1,16 +1,11 @@
-const BASE_URL = 'http://localhost:8080/midas/asset';
+// This now points everything to your Python backend
+const BASE_URL = 'http://localhost:5000/midas/asset';
+const ANALYTICS_URL = 'http://localhost:5000/query';
 
-const ANALYTICS_URL = 'http:/localhost:5000/query'
-/**
- * Fetch recommendations from the portfolio API.
- * @returns {Promise<any[]>} Transformed recommendation data.
- */
 export const fetchRecommendations = async (): Promise<any[]> => {
   try {
     const response = await fetch(`${BASE_URL}/get_portfolio`);
-    if (!response.ok) {
-      throw new Error(`Error fetching recommendations: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`Error fetching recommendations: ${response.statusText}`);
     const data = await response.json();
     return data.map((item: any) => ({
       ticker: item.ticker,
@@ -24,17 +19,10 @@ export const fetchRecommendations = async (): Promise<any[]> => {
   }
 };
 
-/**
- * Fetch indicator data for a specific ticker.
- * @param {string} ticker - The stock ticker.
- * @returns {Promise<any>} Indicator data for the ticker.
- */
 export const fetchIndicatorData = async (ticker: string): Promise<any> => {
   try {
     const response = await fetch(`${BASE_URL}/get_signal/${ticker}/stock`);
-    if (!response.ok) {
-      throw new Error(`Error fetching indicator data: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`Error fetching indicator data: ${response.statusText}`);
     return await response.json();
   } catch (error) {
     console.error(`Error fetching indicator data for ${ticker}:`, error);
@@ -42,37 +30,22 @@ export const fetchIndicatorData = async (ticker: string): Promise<any> => {
   }
 };
 
-/**
- * Fetch the watchlist data from the API.
- * @returns {Promise<any[]>} Array of watchlist data.
- */
 export const fetchWatchlist = async (): Promise<any[]> => {
   try {
     const response = await fetch(`${BASE_URL}/get_watch_list`);
-    if (!response.ok) {
-      throw new Error(`Error fetching watchlist: ${response.statusText}`);
-    }
-    console.log('Watchlist Item fetched',response)
+    if (!response.ok) throw new Error(`Error fetching watchlist: ${response.statusText}`);
     const jsonData = await response.json();
-    const dataArray = Object.keys(jsonData).map((key) => jsonData[key]);
-    return dataArray;
+    return Object.keys(jsonData).map((key) => jsonData[key]);
   } catch (error) {
     console.error('Error fetching data:', error);
     throw error;
   }
 };
 
-/**
- * Fetch repeated movers within the configured time window.
- * @returns {Promise<string[]>} A promise that resolves to a list of repeated mover names.
- */
 export const fetchRepeatedMovers = async (): Promise<string[]> => {
   try {
     const response = await fetch(`${BASE_URL}/repeated_movers`);
-    if (!response.ok) {
-      throw new Error(`Error fetching repeated movers: ${response.statusText}`);
-    }
-    console.log('Fetched Repeated Movers',response.body)
+    if (!response.ok) throw new Error(`Error fetching repeated movers: ${response.statusText}`);
     return await response.json();
   } catch (error) {
     console.error('Error fetching repeated movers:', error);
@@ -80,56 +53,27 @@ export const fetchRepeatedMovers = async (): Promise<string[]> => {
   }
 };
 
-
 export const queryLlm = async (payload: Record<string, any>): Promise<any> => {
   try {
-    const API_URL = "http://localhost:5000/query"; // Use absolute URL
-
-    console.log('RETRIEVED PAYLOAD ',payload)
-    const response = await fetch(API_URL, {
+    const response = await fetch(ANALYTICS_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      throw new Error(`Error processing LLM request: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data; // Ensure JSON is parsed and returned
+    if (!response.ok) throw new Error(`Error processing LLM request: ${response.statusText}`);
+    return await response.json();
   } catch (error) {
     console.error('Error fetching data:', error);
     throw error;
   }
 };
 
-
-
 export const queryTopMovers = async (mover?: string): Promise<any> => {
   try {
-    // Build the URL with an optional query parameter
-    let url = 'http://localhost:8080/midas/asset/top_movers';
-    if (mover) {
-      url += `?mover=${encodeURIComponent(mover)}`;
-    }
-
-    // Make the fetch request
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // Handle errors
-    if (!response.ok) {
-      throw new Error(`Error fetching top movers: ${response.statusText}`);
-    }
-
-    // Return the parsed JSON response
+    let url = `${BASE_URL}/top_movers`;
+    if (mover) url += `?mover=${encodeURIComponent(mover)}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Error fetching top movers: ${response.statusText}`);
     return await response.json();
   } catch (error) {
     console.error('Error fetching top movers:', error);
@@ -137,23 +81,12 @@ export const queryTopMovers = async (mover?: string): Promise<any> => {
   }
 };
 
-
-
 export const scrapeReddit = async (lookback: string): Promise<any> => {
   try {
-    const response = await fetch(`http://localhost:5000/fetch_shorts?lookback=${lookback}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error fetching data: ${response.statusText}`);
-    }
-
+    const response = await fetch(`http://localhost:5000/fetch_shorts?lookback=${lookback}`);
+    if (!response.ok) throw new Error(`Error fetching data: ${response.statusText}`);
     const data = await response.json();
-    return data.data; // Return the JSON data from the response
+    return data.data;
   } catch (error) {
     console.error('Error during Reddit scraping:', error);
     throw error;

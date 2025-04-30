@@ -15,7 +15,7 @@ const ReserchView = () => {
 
   const handleSearch = async () => {
     console.log(`Searching for ${searchTerm} with type ${assetType}`);
-    let url = `http://localhost:8080/midas/asset/get_signal/${searchTerm}/${assetType}`;
+    let url = `http://localhost:5000/midas/asset/get_signal/${searchTerm}/${assetType}`;
 
     try {
       const response = await fetch(url);
@@ -33,25 +33,6 @@ const ReserchView = () => {
     }
   };
 
-  const handleStringListFetch = async (strings: string[], startDate: string, endDate: string) => {
-    console.log(`Fetching data for strings: ${strings.join(', ')} from ${startDate} to ${endDate}`);
-    const url = `http://localhost:8080/api/your-endpoint`;
-    
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ strings, startDate, endDate }),
-      });
-      const jsonData = await response.json();
-      console.log('Fetched data:', jsonData);
-      // Handle the response data
-    } catch (error) {
-      console.error('Error fetching string list data:', error);
-    }
-  };
 
   return (
     <div className="dashboard-container">

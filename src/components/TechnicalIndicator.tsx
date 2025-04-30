@@ -120,9 +120,9 @@ const TechnicalIndicator = ({ searchData }) => {
           {searchData.map((item, index) => (
             <tr key={index}>
               <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
-              <td style={getStyle(item.priceRateOfChange, 'Rate of Change')}>{item.priceRateOfChange}</td>
-              <td style={getStyle(item.relativeStrengthIndex, 'RSI')}>{item.relativeStrengthIndex}</td>
-              <td style={getStyle(item.stochasticOscillator, 'SO')}>{item.stochasticOscillator}</td>
+              <td style={getStyle(item.price_rate_of_change, 'Rate of Change')}>{item.price_rate_of_change}</td>
+              <td style={getStyle(item.rsi, 'RSI')}>{item.rsi}</td>
+              <td style={getStyle(item.stochastic_oscillator, 'SO')}>{item.stochastic_oscillator}</td>
               <td>{item.signal}</td>
               <td>
                 {purchaseInfo[item.ticker]?.showInput ? (

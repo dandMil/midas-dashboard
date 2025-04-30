@@ -3,17 +3,25 @@ import TickerTable from './TickerTable.tsx';
 import {queryTopMovers} from '../services/api.tsx';
 
 const TopMoverFetcher: React.FC<{ mover: string }> = ({ mover }) => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [data, setData] = useState<any>(null);
+  // const [loading, setLoading] = useState<boolean>(true);
+  // const [error, setError] = useState<string | null>(null);
+
+  const [data, setData] = useState<any[]>([]);  // ✅ fix null
+const [loading, setLoading] = useState<boolean>(true);
+const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const jsonData = await queryTopMovers(mover); // Use the mover prop dynamically
-        setData(jsonData.tickers);
+        const jsonData = await queryTopMovers(mover);
+        console.log('Fetched data:', jsonData);  // ✅ will be an array directly
+  
+        setData(jsonData['data']);  // ✅ correct: jsonData is already the array
+        console.log('Length of data:', jsonData.length);
       } catch (error) {
         console.error('Error fetching data:', error);
         setError('Failed to fetch data.');
@@ -21,9 +29,9 @@ const TopMoverFetcher: React.FC<{ mover: string }> = ({ mover }) => {
         setLoading(false);
       }
     };
-
+  
     fetchData();
-  }, [mover]); // Re-fetch data whenever mover prop changes
+  }, [mover]);
 
   if (loading) {
     return <p>Loading...</p>;
