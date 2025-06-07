@@ -1,6 +1,6 @@
 // This now points everything to your Python backend
-const BASE_URL = 'http://localhost:5000/midas/asset';
-const ANALYTICS_URL = 'http://localhost:5000/query';
+const BASE_URL = 'http://localhost:8000/midas/asset';
+const ANALYTICS_URL = 'http://localhost:8000/query';
 
 export const fetchRecommendations = async (): Promise<any[]> => {
   try {
@@ -83,12 +83,24 @@ export const queryTopMovers = async (mover?: string): Promise<any> => {
 
 export const scrapeReddit = async (lookback: string): Promise<any> => {
   try {
-    const response = await fetch(`http://localhost:5000/fetch_shorts?lookback=${lookback}`);
+    const response = await fetch(`http://localhost:8000/fetch_shorts?lookback=${lookback}`);
     if (!response.ok) throw new Error(`Error fetching data: ${response.statusText}`);
     const data = await response.json();
     return data.data;
   } catch (error) {
     console.error('Error during Reddit scraping:', error);
+    throw error;
+  }
+};
+
+
+export const fetchDailySummary = async (): Promise<any[]> => {
+  try {
+    const response = await fetch('http://localhost:8000/midas/daily_summary');
+    if (!response.ok) throw new Error(`Error fetching daily summary: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching daily summary:', error);
     throw error;
   }
 };
