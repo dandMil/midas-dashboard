@@ -16,7 +16,7 @@ function App() {
         <TopMenu />
         <main className="App-main">
           <Routes>
-            <Route path="/" element={<AnalyticsView />} />
+            <Route path="/" element={<DailySummary />} />
             <Route path="/portfolio" element={<TradeRecommendations />} />
             <Route path="/watchlist" element={<AssetFetcher />} />
             <Route path="/research" element={<ResearchView />} />

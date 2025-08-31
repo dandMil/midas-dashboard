@@ -2,6 +2,9 @@
 const BASE_URL = 'http://localhost:8000/midas/asset';
 const ANALYTICS_URL = 'http://localhost:8000/query';
 
+// Type definition for volume data
+type VolumePoint = { date: string; volume: number };
+
 export const fetchRecommendations = async (): Promise<any[]> => {
   try {
     const response = await fetch(`${BASE_URL}/get_portfolio`);
@@ -101,6 +104,88 @@ export const fetchDailySummary = async (): Promise<any[]> => {
     return await response.json();
   } catch (error) {
     console.error('Error fetching daily summary:', error);
+    throw error;
+  }
+};
+
+
+
+export const purchaseAsset = async (payload: {
+  ticker: string;
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  const res = await fetch("/midas/purchase_asset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+};
+
+export const sellAsset = async (payload: {
+  ticker: string;
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  const res = await fetch("/midas/sell_asset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+};
+
+
+
+
+export const fetchAssetVolume = async (
+  ticker: string,
+  range: string = '1M'
+): Promise<VolumePoint[]> => {
+  if (!ticker) throw new Error('ticker is required');
+
+  const url = `${BASE_URL}/volume?ticker=${encodeURIComponent(ticker)}&range=${encodeURIComponent(range)}`;
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`Error fetching volume for ${ticker}: ${res.status} ${res.statusText}`);
+  }
+
+  // Backend returns an array like [{ date, volume }, ...]
+  const raw = await res.json();
+
+  // Be tolerant if the backend ever wraps it in { data: [...] }
+  const arr: any[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
+
+  return (arr || [])
+    .filter((d) => d && d.date && typeof d.volume === 'number')
+    .map((d) => ({ date: String(d.date), volume: Number(d.volume) }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
+export const fetchCryptoSummary = async (): Promise<any[]> => {
+  console.log('🔍 fetchCryptoSummary() called');
+  console.log('🌐 Making request to: http://localhost:8000/midas/crypto_summary');
+  
+  try {
+    const response = await fetch('http://localhost:8000/midas/crypto_summary');
+    console.log('📡 Response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      console.error('❌ Response not OK:', response.status, response.statusText);
+      throw new Error(`Error fetching crypto summary: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Crypto data parsed successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('💥 Error in fetchCryptoSummary:', error);
     throw error;
   }
 };
