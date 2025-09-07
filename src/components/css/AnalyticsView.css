@@ -1,0 +1,44 @@
+/* General Tabs Container */
+.ant-tabs-nav {
+    background-color: #000; /* Black background for tabs */
+    border-bottom: 2px solid #66ff66; /* Green border for the active tab */
+  }
+  
+  /* Tab Styling */
+  .ant-tabs-tab {
+    color: #66ff66 !important; /* Green text for inactive tabs */
+    background-color: #000 !important; /* Black background for tabs */
+    padding: 10px 20px; /* Add padding for better spacing */
+    font-weight: bold;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Active Tab Styling */
+  .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: #000 !important; /* Black text for active tab */
+    background-color: #66ff66 !important; /* Green background for active tab */
+    border-radius: 4px; /* Rounded corners for active tab */
+  }
+  
+  /* Hover Effect */
+  .ant-tabs-tab:hover {
+    background-color: #4cb04c !important; /* Slightly darker green on hover */
+    color: #000 !important; /* Black text on hover */
+  }
+  
+  /* Tab Content */
+  .ant-tabs-content {
+    background-color: #000; /* Black background for tab content */
+    color: #fff; /* White text for content */
+    padding: 20px;
+    border: 1px solid #66ff66; /* Green border around tab content */
+    border-radius: 8px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .ant-tabs-tab {
+      padding: 8px 16px; /* Reduce padding on smaller screens */
+    }
+  }
+  

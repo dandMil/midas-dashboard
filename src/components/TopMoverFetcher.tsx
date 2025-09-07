@@ -1,39 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import AssetItem from '../pages/Portfolio/Watchlist/components/WatchlistItem.tsx';
-import VolumeItem from './VolumeItem.tsx';
 import TickerTable from './TickerTable.tsx';
-const TopMoverFetcher = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+import {queryTopMovers} from '../services/api.tsx';
+
+const TopMoverFetcher: React.FC<{ mover: string }> = ({ mover }) => {
+  // const [data, setData] = useState<any>(null);
+  // const [loading, setLoading] = useState<boolean>(true);
+  // const [error, setError] = useState<string | null>(null);
+
+  const [data, setData] = useState<any[]>([]);  // ✅ fix null
+const [loading, setLoading] = useState<boolean>(true);
+const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await fetch('http://localhost:8080/midas/asset/top_movers');
-        const jsonData = await response.json();
-        console.log('JSON DATA',jsonData)
-        console.log('JSON DATA TICKER',jsonData.tickers)
-        console.log('FIRST ELEMENT',jsonData.tickers[0])
-        console.log('TYPE OF JSON DATA TICKER',typeof(jsonData.tickers))
-        setData(jsonData.tickers);
-        setLoading(false);
+        const jsonData = await queryTopMovers(mover);
+        console.log('Fetched data:', jsonData);  // ✅ will be an array directly
+  
+        setData(jsonData['data']);  // ✅ correct: jsonData is already the array
+        console.log('Length of data:', jsonData.length);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError('Failed to fetch data.');
+      } finally {
+        setLoading(false);
       }
     };
-
+  
     fetchData();
-  }, []);
+  }, [mover]);
+
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  if (error) {
+    return <p>{error}</p>;
+  }
 
   return (
     <div>
-      <h1>Today's Movers</h1>
-      {loading ? (
-        <p>Loading...</p>
+      {data && data.length > 0 ? (
+        <TickerTable data={data} />
       ) : (
-        <div>
-            <TickerTable data={data} />
-        </div>
+        <p>No data available.</p>
       )}
     </div>
   );

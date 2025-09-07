@@ -3,6 +3,7 @@ import './Portfolio.css'; // Import CSS file for styling
 import TechnicalIndicator from '../../components/TechnicalIndicator.tsx'; // Import the TechnicalIndicator component
 import StockChart from '../../components/Chart.tsx'; // Import the StockChart component
 import { fetchRecommendations, fetchIndicatorData } from '../../services/api.tsx'; // Import API functions
+import LlmPlugin from '../../components/LlmPlugin.tsx';
 
 const Portfolio = () => {
   const [recommendations, setRecommendations] = useState([]);
@@ -82,6 +83,10 @@ const Portfolio = () => {
                   <tr>
                     <td colSpan={9}>
                       <StockChart ticker={rec.ticker} timeRange={1} />
+                    </td>
+                    <td>
+                    <LlmPlugin />
+
                     </td>
                   </tr>
                 </>

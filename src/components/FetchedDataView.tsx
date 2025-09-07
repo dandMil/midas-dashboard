@@ -1,40 +1,35 @@
 import React, { useState } from 'react';
-import './css/FetchedDataView.css'; // Import CSS file for styling
+import './css/FetchedDataView.css';
 import StockChart from './Chart.tsx';
+import LlmPlugin from './LlmPlugin.tsx';
 
 const FetchedDataView = ({ searchData }) => {
-  const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
-  const [purchaseInfo, setPurchaseInfo] = useState({}); // State to hold purchase details
-  const [expandedRows, setExpandedRows] = useState({}); // State to track expanded rows
-  const [indicatorData, setIndicatorData] = useState({}); // State to store indicator data
+  const [watchlistItems, setWatchlistItems] = useState([]);
+  const [purchaseInfo, setPurchaseInfo] = useState({});
+  const [expandedRows, setExpandedRows] = useState({});
+  const [indicatorData, setIndicatorData] = useState({});
 
   console.log('SEARCHED DATA', searchData);
 
-  // Function to handle adding/removing asset from watchlist
-  const handleToggleWatchlist = async (name, type) => {
+  const handleToggleWatchlist = async (ticker, type) => {
     try {
-      // Check if the item is already in the watchlist
-      const isAlreadyInWatchlist = watchlistItems.some(item => item.name === name);
+      const isAlreadyInWatchlist = watchlistItems.some(item => item.name === ticker);
 
       if (isAlreadyInWatchlist) {
-        // If item is already in watchlist, remove it
-        const updatedList = watchlistItems.filter(item => item.name !== name);
+        const updatedList = watchlistItems.filter(item => item.name !== ticker);
         setWatchlistItems(updatedList);
-        // Call delete API if needed
-        await fetch(`http://localhost:8080/midas/asset/watch_list/${name}`, {
+        await fetch(`http://localhost:5000/midas/asset/watch_list/${ticker}`, {
           method: 'DELETE',
         });
       } else {
-        // If item is not in watchlist, add it
-        const updatedList = [...watchlistItems, { name, type }];
+        const updatedList = [...watchlistItems, { name: ticker, type }];
         setWatchlistItems(updatedList);
-        // Call add API if needed
-        await fetch('http://localhost:8080/midas/asset/watch_list/', {
+        await fetch('http://localhost:5000/midas/asset/watch_list/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ name, type }),
+          body: JSON.stringify({ name: ticker, type }),
         });
       }
     } catch (error) {
@@ -42,31 +37,26 @@ const FetchedDataView = ({ searchData }) => {
     }
   };
 
-  // Function to handle purchase action
-  const handlePurchaseClick = (name, price) => {
-    setPurchaseInfo({ ...purchaseInfo, [name]: { shares: '', price, showInput: true } });
+  const handlePurchaseClick = (ticker, price) => {
+    setPurchaseInfo({ ...purchaseInfo, [ticker]: { shares: '', price, showInput: true } });
   };
 
-  // Function to handle change in the number of shares input
-  const handleSharesChange = (name, shares) => {
-    setPurchaseInfo({ ...purchaseInfo, [name]: { ...purchaseInfo[name], shares } });
+  const handleSharesChange = (ticker, shares) => {
+    setPurchaseInfo({ ...purchaseInfo, [ticker]: { ...purchaseInfo[ticker], shares } });
   };
 
-  // Function to handle confirm purchase action
-  const handleConfirmPurchase = async (name) => {
-    const { shares, price } = purchaseInfo[name];
+  const handleConfirmPurchase = async (ticker) => {
+    const { shares, price } = purchaseInfo[ticker];
     try {
-      // Send POST request to the API
-      await fetch('http://localhost:8080/midas/asset/purchase', {
+      await fetch('http://localhost:5000/midas/asset/purchase', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, shares: parseInt(shares, 10), price }),
+        body: JSON.stringify({ name: ticker, shares: parseInt(shares, 10), price }),
       });
-      // Clear the purchase info for the confirmed item
-      setPurchaseInfo({ ...purchaseInfo, [name]: { shares: '', price, showInput: false } });
-      alert(`Purchased ${shares} shares of ${name} at ${price}`);
+      setPurchaseInfo({ ...purchaseInfo, [ticker]: { shares: '', price, showInput: false } });
+      alert(`Purchased ${shares} shares of ${ticker} at ${price}`);
     } catch (error) {
       console.error('Error making purchase:', error);
     }
@@ -75,12 +65,12 @@ const FetchedDataView = ({ searchData }) => {
   const handleRowClick = async (ticker) => {
     setExpandedRows((prevExpandedRows) => ({
       ...prevExpandedRows,
-      [ticker]: !prevExpandedRows[ticker], // Toggle the expansion state
+      [ticker]: !prevExpandedRows[ticker],
     }));
 
     if (!expandedRows[ticker]) {
       try {
-        const response = await fetch(`http://localhost:8080/midas/asset/get_signal/${ticker}/stock`);
+        const response = await fetch(`http://localhost:5000/midas/asset/get_signal/${ticker}/stock`);
         const jsonData = await response.json();
         setIndicatorData((prevData) => ({
           ...prevData,
@@ -97,9 +87,6 @@ const FetchedDataView = ({ searchData }) => {
     let isNeutral = false;
     switch (type) {
       case 'MACD':
-        isBearish = value < 0;
-        isNeutral = value === 0;
-        break;
       case 'Rate of Change':
         isBearish = value < 0;
         isNeutral = value === 0;
@@ -115,13 +102,9 @@ const FetchedDataView = ({ searchData }) => {
       default:
         break;
     }
-    if (isBearish) {
-      return { color: 'red' };
-    } else if (isNeutral) {
-      return { color: 'blue' };
-    } else {
-      return {};
-    }
+    if (isBearish) return { color: 'red' };
+    if (isNeutral) return { color: 'blue' };
+    return {};
   };
 
   return (
@@ -143,44 +126,50 @@ const FetchedDataView = ({ searchData }) => {
         <tbody>
           {searchData.map((item, index) => (
             <React.Fragment key={index}>
-              <tr onClick={() => handleRowClick(item.name)}>
-                <td>{item.name}</td>
-                <td>{item.marketPrice}</td>
+              <tr onClick={() => handleRowClick(item.ticker)}>
+                <td>{item.ticker}</td>
+                <td>{item.market_price}</td>
                 <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
-                <td style={getStyle(item.priceRateOfChange, 'Rate of Change')}>{item.priceRateOfChange}</td>
-                <td style={getStyle(item.relativeStrengthIndex, 'RSI')}>{item.relativeStrengthIndex}</td>
-                <td style={getStyle(item.stochasticOscillator, 'SO')}>{item.stochasticOscillator}</td>
+                <td style={getStyle(item.price_rate_of_change, 'Rate of Change')}>{item.price_rate_of_change}</td>
+                <td style={getStyle(item.rsi, 'RSI')}>{item.rsi}</td>
+                <td style={getStyle(item.stochastic_oscillator, 'SO')}>{item.stochastic_oscillator}</td>
                 <td>{item.signal}</td>
                 <td>
-                  <button className="search-button" onClick={() => handleToggleWatchlist(item.name, item.type)}>
-                    {watchlistItems.some(watchlistItem => watchlistItem.name === item.name) ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                  <button
+                    className="search-button"
+                    onClick={() => handleToggleWatchlist(item.ticker, item.type)}
+                  >
+                    {watchlistItems.some(watchlistItem => watchlistItem.name === item.ticker)
+                      ? 'Remove from Watchlist'
+                      : 'Add to Watchlist'}
                   </button>
                 </td>
                 <td>
-                  {purchaseInfo[item.name]?.showInput ? (
+                  {purchaseInfo[item.ticker]?.showInput ? (
                     <>
                       <input
                         type="number"
-                        value={purchaseInfo[item.name].shares}
-                        onChange={(e) => handleSharesChange(item.name, e.target.value)}
+                        value={purchaseInfo[item.ticker].shares}
+                        onChange={(e) => handleSharesChange(item.ticker, e.target.value)}
                         placeholder="Shares"
                         className="input-box"
                       />
-                      <button className="confirm-button" onClick={() => handleConfirmPurchase(item.name)}>
+                      <button className="confirm-button" onClick={() => handleConfirmPurchase(item.ticker)}>
                         Confirm
                       </button>
                     </>
                   ) : (
-                    <button className="search-button" onClick={() => handlePurchaseClick(item.name, item.marketPrice)}>
+                    <button className="search-button" onClick={() => handlePurchaseClick(item.ticker, item.market_price)}>
                       Purchase
                     </button>
                   )}
                 </td>
               </tr>
-              {expandedRows[item.name] && (
+              {expandedRows[item.ticker] && (
                 <tr>
                   <td colSpan="9">
-                    <StockChart ticker={item.name} timeRange={1} />
+                    <StockChart ticker={item.ticker} timeRange={1} />
+                    <LlmPlugin />
                   </td>
                 </tr>
               )}

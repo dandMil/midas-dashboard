@@ -26,7 +26,6 @@ interface PolygonResponse {
 const TickerTable: React.FC<PolygonResponse> = ({ data: tickers }) => {
     const [indicatorData, setIndicatorData] = useState({}); // State to store indicator data
     const [expandedRows, setExpandedRows] = useState({}); // State to track expanded rows
-
     useEffect(() => {
         // Update data when initialData changes
         // setData(initialData);
@@ -41,7 +40,7 @@ const TickerTable: React.FC<PolygonResponse> = ({ data: tickers }) => {
     
         if (!expandedRows[ticker]) {
           try {
-            const response = await fetch(`http://localhost:8080/midas/asset/get_signal/${ticker}/stock`);
+            const response = await fetch(`http://localhost:8000/midas/asset/get_signal/${ticker}/stock`);
             const jsonData = await response.json();
             setIndicatorData((prevData) => ({
               ...prevData,

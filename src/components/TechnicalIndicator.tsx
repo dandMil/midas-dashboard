@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './css/FetchedDataView.css'; // Import CSS file for styling
+import LlmPlugin from './LlmPlugin.tsx';
 
 const TechnicalIndicator = ({ searchData }) => {
   const [watchlistItems, setWatchlistItems] = useState([]); // State variable to hold watched items
@@ -119,9 +120,9 @@ const TechnicalIndicator = ({ searchData }) => {
           {searchData.map((item, index) => (
             <tr key={index}>
               <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
-              <td style={getStyle(item.priceRateOfChange, 'Rate of Change')}>{item.priceRateOfChange}</td>
-              <td style={getStyle(item.relativeStrengthIndex, 'RSI')}>{item.relativeStrengthIndex}</td>
-              <td style={getStyle(item.stochasticOscillator, 'SO')}>{item.stochasticOscillator}</td>
+              <td style={getStyle(item.price_rate_of_change, 'Rate of Change')}>{item.price_rate_of_change}</td>
+              <td style={getStyle(item.rsi, 'RSI')}>{item.rsi}</td>
+              <td style={getStyle(item.stochastic_oscillator, 'SO')}>{item.stochastic_oscillator}</td>
               <td>{item.signal}</td>
               <td>
                 {purchaseInfo[item.ticker]?.showInput ? (
@@ -143,6 +144,10 @@ const TechnicalIndicator = ({ searchData }) => {
                   </button>
                 )}
               </td>
+              <td>
+                    <LlmPlugin />
+
+                    </td>
             </tr>
           ))}
         </tbody>

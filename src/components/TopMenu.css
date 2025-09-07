@@ -1,0 +1,206 @@
+/* TopMenu.css - Modern Terminal Theme */
+.top-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 2px 15px var(--shadow-secondary);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--border-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.app-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all var(--transition-fast);
+}
+
+.app-name:hover {
+  color: var(--accent-primary);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.center-section {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.nav-button {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: all var(--transition-fast);
+  font-family: var(--font-family-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+  transition: left var(--transition-normal);
+}
+
+.nav-button:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+  box-shadow: 0 0 15px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.nav-button:hover::before {
+  left: 100%;
+}
+
+.nav-button.active {
+  background-color: var(--accent-primary);
+  color: var(--bg-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 20px var(--accent-glow);
+  font-weight: 600;
+}
+
+.nav-button.active::before {
+  display: none;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.search-bar {
+  width: 250px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-family-secondary);
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+}
+
+.search-bar:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+  background-color: var(--bg-secondary);
+}
+
+.search-bar::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.theme-toggle, .login-button {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-accent);
+  color: var(--text-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-family-primary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle::before, .login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+  transition: left var(--transition-normal);
+}
+
+.theme-toggle:hover, .login-button:hover {
+  background-color: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 0 15px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:hover::before, .login-button:hover::before {
+  left: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .top-menu {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .center-section {
+    gap: var(--spacing-xs);
+  }
+  
+  .nav-button {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8rem;
+  }
+  
+  .search-bar {
+    width: 180px;
+  }
+  
+  .app-name {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-menu {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+  }
+  
+  .center-section {
+    order: 2;
+  }
+  
+  .right-section {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .search-bar {
+    width: 100%;
+    max-width: 300px;
+  }
+}
