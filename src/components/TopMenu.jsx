@@ -1,12 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TopMenu.css';
 
 const TopMenu = () => {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleNavigation = (path) => {
     navigate(path);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(`/research?ticker=${searchTerm.trim().toUpperCase()}&type=stock`);
+      setSearchTerm('');
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
   };
 
   return (
@@ -21,11 +36,16 @@ const TopMenu = () => {
         <button className="nav-button" onClick={() => handleNavigation('/research')}>Research</button>
       </div>
       <div className="right-section">
-        <input
-          type="text"
-          className="search-bar"
-          placeholder="Search ticker, company, or profile"
-        />
+        <form onSubmit={handleSearch}>
+          <input
+            type="text"
+            className="search-bar"
+            placeholder="Search ticker symbol..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleKeyPress}
+          />
+        </form>
       </div>
     </div>
   );

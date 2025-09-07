@@ -189,3 +189,35 @@ export const fetchCryptoSummary = async (): Promise<any[]> => {
     throw error;
   }
 };
+
+export const fetchTechnicalAnalysis = async (ticker: string): Promise<any> => {
+  try {
+    const response = await fetch(`${BASE_URL}/get_signal/${ticker}/stock`);
+    if (!response.ok) throw new Error(`Error fetching technical analysis: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching technical analysis for ${ticker}:`, error);
+    throw error;
+  }
+};
+
+export const fetchTickerDetails = async (ticker: string, assetType: string = 'stock'): Promise<any> => {
+  try {
+    const response = await fetch(`${BASE_URL}/get_signal/${ticker}/${assetType}`);
+    if (!response.ok) throw new Error(`Error fetching ticker details: ${response.statusText}`);
+    const data = await response.json();
+    
+    // Add industry information if available (this would come from your backend)
+    // For now, we'll add a placeholder that can be enhanced later
+    return {
+      ...data,
+      ticker: ticker.toUpperCase(),
+      industry: data.industry || 'Technology', // Placeholder - should come from backend
+      company_name: data.company_name || ticker.toUpperCase(),
+      sector: data.sector || 'Technology'
+    };
+  } catch (error) {
+    console.error(`Error fetching ticker details for ${ticker}:`, error);
+    throw error;
+  }
+};

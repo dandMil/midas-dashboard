@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchDailySummary, fetchCryptoSummary, purchaseAsset, sellAsset, /* NEW: */ fetchAssetVolume } from '../services/api.tsx';
+import TechnicalAnalysis from './TechnicalAnalysis.tsx';
 import './css/spinner.css';
 import './css/DailySummary.css';
 
@@ -258,6 +259,9 @@ const DailySummary: React.FC = () => {
   const [volumeLoading, setVolumeLoading] = useState(false);
   const [volumeError, setVolumeError] = useState<string | null>(null);
 
+  // Technical analysis state
+  const [expandedTickers, setExpandedTickers] = useState<Set<string>>(new Set());
+
   // Sorting state
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -396,6 +400,19 @@ const DailySummary: React.FC = () => {
     }
   };
 
+  // Technical analysis toggle handler
+  const handleToggleTechnicalAnalysis = (ticker: string) => {
+    setExpandedTickers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticker)) {
+        newSet.delete(ticker);
+      } else {
+        newSet.add(ticker);
+      }
+      return newSet;
+    });
+  };
+
   // Sorting function
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' | null = 'asc';
@@ -451,18 +468,6 @@ const DailySummary: React.FC = () => {
     });
   }, [summary, sortConfig]);
 
-  const renderLog = (log: any[]) => {
-    return (
-      <ul style={{ margin: 0, paddingLeft: '1em' }}>
-        {log.map((entry, i) => (
-          <li key={i}>
-            {entry.date}: {entry.action.toUpperCase()} @ ${entry.price.toFixed(2)}<br />
-            SL: ${entry.stop_loss.toFixed(2)}, TP: ${entry.take_profit.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    );
-  };
 
   if (loading) {
     return (
@@ -554,131 +559,127 @@ const DailySummary: React.FC = () => {
                 <th>Expected Loss</th>
                 <th>Shares</th>
                 <th>Action</th>
-                <th>Backtested Return</th>
-                <th>Log</th>
+                <th>Technical Analysis</th>
               </tr>
             </thead>
             <tbody>
               {sortedSummary.map((item, index) => {
                 const key = item.ticker;
                 const shares = shareCounts[key] || 0;
+                const isSelected = selectedTicker === item.ticker;
 
                 return (
-                  <tr key={index}>
-                    <td
-                      onClick={() => handleSelectTicker(item.ticker)}
-                      style={{
-                        cursor: 'pointer',
-                        color: selectedTicker === item.ticker ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                        textDecoration: 'underline',
-                        fontFamily: 'var(--font-family-primary)',
-                        fontWeight: '600'
-                      }}
-                      title="Click to view volume"
-                    >
-                      {item.ticker}
-                    </td>
-                    <td>{item.strategy}</td>
-                    <td>{item.signal}</td>
-                    <td>{item.price != null ? `$${item.price.toFixed(2)}` : '—'}</td>
-                    <td>{item.stop_loss != null ? `$${item.stop_loss.toFixed(2)}` : '—'}</td>
-                    <td>{item.take_profit != null ? `$${item.take_profit.toFixed(2)}` : '—'}</td>
-                    <td>{item.expected_profit != null ? `$${item.expected_profit.toFixed(2)}` : '—'}</td>
-                    <td>{item.expected_loss != null ? `$${item.expected_loss.toFixed(2)}` : '—'}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        value={shares}
-                        onChange={(e) => handleShareChange(key, e.target.value)}
-                        style={{ width: '60px' }}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        className="primary"
-                        onClick={() =>
-                          handleBuy(item.ticker, shares, item.price, item.stop_loss, item.take_profit)
-                        }
-                        style={{ marginBottom: '4px' }}
+                  <React.Fragment key={index}>
+                    <tr>
+                      <td
+                        onClick={() => handleSelectTicker(item.ticker)}
+                        style={{
+                          cursor: 'pointer',
+                          color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          textDecoration: 'underline',
+                          fontFamily: 'var(--font-family-primary)',
+                          fontWeight: '600'
+                        }}
+                        title="Click to view volume"
                       >
-                        Buy
-                      </button>
-                      <br />
-                      <button
-                        onClick={() =>
-                          handleSell(item.ticker, shares, item.price, item.stop_loss, item.take_profit)
-                        }
-                      >
-                        Sell
-                      </button>
-                    </td>
-                    <td>{item.total_return != null ? `${item.total_return.toFixed(2)}%` : '—'}</td>
-                    <td>{renderLog(item.log)}</td>
-                  </tr>
+                        {item.ticker}
+                      </td>
+                      <td>{item.strategy}</td>
+                      <td>{item.signal}</td>
+                      <td>{item.price != null ? `$${item.price.toFixed(2)}` : '—'}</td>
+                      <td>{item.stop_loss != null ? `$${item.stop_loss.toFixed(2)}` : '—'}</td>
+                      <td>{item.take_profit != null ? `$${item.take_profit.toFixed(2)}` : '—'}</td>
+                      <td>{item.expected_profit != null ? `$${item.expected_profit.toFixed(2)}` : '—'}</td>
+                      <td>{item.expected_loss != null ? `$${item.expected_loss.toFixed(2)}` : '—'}</td>
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          value={shares}
+                          onChange={(e) => handleShareChange(key, e.target.value)}
+                          style={{ width: '60px' }}
+                        />
+                      </td>
+                      <td>
+                        <button
+                          className="primary"
+                          onClick={() =>
+                            handleBuy(item.ticker, shares, item.price, item.stop_loss, item.take_profit)
+                          }
+                          style={{ marginBottom: '4px' }}
+                        >
+                          Buy
+                        </button>
+                        <br />
+                        <button
+                          onClick={() =>
+                            handleSell(item.ticker, shares, item.price, item.stop_loss, item.take_profit)
+                          }
+                        >
+                          Sell
+                        </button>
+                      </td>
+                      <td>
+                        <TechnicalAnalysis
+                          ticker={item.ticker}
+                          isExpanded={expandedTickers.has(item.ticker)}
+                          onToggle={() => handleToggleTechnicalAnalysis(item.ticker)}
+                        />
+                      </td>
+                    </tr>
+                    {/* Inline Volume Chart Row */}
+                    {isSelected && (
+                      <tr>
+                        <td colSpan={10} style={{ padding: 0, border: 'none' }}>
+                          <div className="inline-volume-container">
+                            <div className="inline-volume-header">
+                              <h4>Volume Analysis — {item.ticker}</h4>
+                              <button 
+                                className="close-inline-volume-btn"
+                                onClick={() => setSelectedTicker(null)}
+                                title="Close volume chart"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {volumeLoading && (
+                              <div className="volume-loading">
+                                <div className="spinner"></div>
+                                <p className="spinner-text">Loading volume data...</p>
+                              </div>
+                            )}
+                            {volumeError && (
+                              <div className="volume-error">
+                                <p className="error-text">{volumeError}</p>
+                                <button 
+                                  onClick={() => selectedTicker && handleSelectTicker(selectedTicker)}
+                                  className="retry-btn"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            )}
+                            {!volumeLoading && !volumeError && volume && volume.length > 0 && (
+                              <div className="inline-volume-chart-wrapper">
+                                <VolumeChart data={volume} width={800} height={200} />
+                              </div>
+                            )}
+                            {!volumeLoading && !volumeError && volume && volume.length === 0 && (
+                              <div className="volume-empty">
+                                <p className="text-secondary">No volume data available for this range.</p>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
 
-        {/* Volume chart section - prominent position */}
-        {selectedTicker && (
-          <div className="volume-section">
-            <div className="volume-chart-container">
-              <div className="volume-header">
-                <h3>Volume Analysis — {selectedTicker}</h3>
-                <button 
-                  className="close-volume-btn"
-                  onClick={() => setSelectedTicker(null)}
-                  title="Close volume chart"
-                >
-                  ×
-                </button>
-              </div>
-              {volumeLoading && (
-                <div className="volume-loading">
-                  <div className="spinner"></div>
-                  <p className="spinner-text">Loading volume data...</p>
-                </div>
-              )}
-              {volumeError && (
-                <div className="volume-error">
-                  <p className="error-text">{volumeError}</p>
-                  <button 
-                    onClick={() => handleSelectTicker(selectedTicker)}
-                    className="retry-btn"
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-              {!volumeLoading && !volumeError && volume && volume.length > 0 && (
-                <div className="volume-chart-wrapper">
-                  <VolumeChart data={volume} />
-                </div>
-              )}
-              {!volumeLoading && !volumeError && volume && volume.length === 0 && (
-                <div className="volume-empty">
-                  <p className="text-secondary">No volume data available for this range.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Placeholder when no ticker selected */}
-        {!selectedTicker && (
-          <div className="volume-placeholder">
-            <div className="volume-chart-container">
-              <h3>Volume Analysis</h3>
-              <div className="placeholder-content">
-                <div className="placeholder-icon">📊</div>
-                <p className="text-secondary">Select a ticker from the table above to view volume analysis</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
