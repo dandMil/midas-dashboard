@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchTechnicalAnalysis } from '../services/api.tsx';
 import './css/TechnicalAnalysis.css';
 
@@ -37,13 +37,7 @@ const TechnicalAnalysis: React.FC<TechnicalAnalysisProps> = ({ ticker, isExpande
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isExpanded && !data) {
-      loadTechnicalData();
-    }
-  }, [isExpanded, ticker]);
-
-  const loadTechnicalData = async () => {
+  const loadTechnicalData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -56,7 +50,13 @@ const TechnicalAnalysis: React.FC<TechnicalAnalysisProps> = ({ ticker, isExpande
     } finally {
       setLoading(false);
     }
-  };
+  }, [ticker]);
+
+  useEffect(() => {
+    if (isExpanded && !data) {
+      loadTechnicalData();
+    }
+  }, [isExpanded, data, loadTechnicalData]);
 
   const getSignalColor = (signal: string) => {
     switch (signal?.toUpperCase()) {
