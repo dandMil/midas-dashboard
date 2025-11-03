@@ -119,27 +119,27 @@ const TechnicalIndicator = ({ searchData }) => {
         <tbody>
           {searchData.map((item, index) => (
             <tr key={index}>
-              <td style={getStyle(item.macd, 'MACD')}>{item.macd}</td>
-              <td style={getStyle(item.price_rate_of_change, 'Rate of Change')}>{item.price_rate_of_change}</td>
-              <td style={getStyle(item.rsi, 'RSI')}>{item.rsi}</td>
-              <td style={getStyle(item.stochastic_oscillator, 'SO')}>{item.stochastic_oscillator}</td>
-              <td>{item.signal}</td>
+              <td style={getStyle(item.macd || 0, 'MACD')}>{item.macd || 'N/A'}</td>
+              <td style={getStyle(item.price_rate_of_change || 0, 'Rate of Change')}>{item.price_rate_of_change || 'N/A'}</td>
+              <td style={getStyle(item.rsi || 0, 'RSI')}>{item.rsi || 'N/A'}</td>
+              <td style={getStyle(item.stochastic_oscillator || 0, 'SO')}>{item.stochastic_oscillator || 'N/A'}</td>
+              <td>{item.signal || 'N/A'}</td>
               <td>
-                {purchaseInfo[item.ticker]?.showInput ? (
+                {purchaseInfo[item.ticker || item.name]?.showInput ? (
                   <>
                     <input
                       type="number"
-                      value={purchaseInfo[item.ticker].shares}
-                      onChange={(e) => handleSharesChange(item.ticker, e.target.value)}
+                      value={purchaseInfo[item.ticker || item.name].shares}
+                      onChange={(e) => handleSharesChange(item.ticker || item.name, e.target.value)}
                       placeholder="Shares"
                       className="input-box"
                     />
-                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.ticker)}>
+                    <button className="confirm-button" onClick={() => handleConfirmPurchase(item.ticker || item.name)}>
                       Confirm
                     </button>
                   </>
                 ) : (
-                  <button className="search-button" onClick={() => handlePurchaseClick(item.ticker, item.marketPrice)}>
+                  <button className="search-button" onClick={() => handlePurchaseClick(item.ticker || item.name, item.marketPrice || item.price)}>
                     Purchase
                   </button>
                 )}

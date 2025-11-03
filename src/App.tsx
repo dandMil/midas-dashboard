@@ -8,6 +8,8 @@ import TradeRecommendations from './pages/Portfolio/Portfolio.tsx';
 import ResearchView from './components/ResearchView.tsx';
 import AnalyticsView from './components/AnalyticsView.tsx';
 import DailySummary from './components/DailySummary.tsx';
+import ShortsSqueezeView from './components/ShortsSqueezeView.tsx';
+import ScreenerView from './components/ScreenerView.tsx';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
             <Route path="/portfolio" element={<TradeRecommendations />} />
             <Route path="/watchlist" element={<AssetFetcher />} />
             <Route path="/research" element={<ResearchView />} />
+            <Route path="/screener" element={<ScreenerView />} />
+            <Route path="/shorts-squeeze" element={<ShortsSqueezeView />} />
             <Route path="/daily_summary" element={<DailySummary />} />
           </Routes>
         </main>

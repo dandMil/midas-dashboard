@@ -37,6 +37,8 @@
   display: flex;
   gap: var(--spacing-sm);
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .nav-button {

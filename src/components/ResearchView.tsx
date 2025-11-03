@@ -54,16 +54,16 @@ const ResearchView = () => {
       
       // Add searched item to the list of searched items
       const newItem = {
-        ticker: data.ticker,
-        market_price: data.market_price,
-        signal: data.signal,
-        macd: data.macd,
-        price_rate_of_change: data.price_rate_of_change,
-        rsi: data.rsi,
-        stochastic_oscillator: data.stochastic_oscillator,
-        industry: data.industry,
-        company_name: data.company_name,
-        sector: data.sector
+        ticker: data.ticker || searchTerm.trim().toUpperCase(),
+        market_price: data.market_price || data.price || data.currentPrice || 0,
+        signal: data.signal || 'NEUTRAL',
+        macd: data.macd || 0,
+        price_rate_of_change: data.price_rate_of_change || data.priceRateOfChange || 0,
+        rsi: data.rsi || data.relativeStrengthIndex || 0,
+        stochastic_oscillator: data.stochastic_oscillator || data.stochasticOscillator || 0,
+        industry: data.industry || 'Unknown',
+        company_name: data.company_name || data.name || searchTerm.trim().toUpperCase(),
+        sector: data.sector || 'Unknown'
       };
       
       setSearchedItems(prevItems => {

@@ -207,17 +207,87 @@ export const fetchTickerDetails = async (ticker: string, assetType: string = 'st
     if (!response.ok) throw new Error(`Error fetching ticker details: ${response.statusText}`);
     const data = await response.json();
     
-    // Add industry information if available (this would come from your backend)
-    // For now, we'll add a placeholder that can be enhanced later
+    // Ensure all required properties exist with default values
     return {
-      ...data,
-      ticker: ticker.toUpperCase(),
-      industry: data.industry || 'Technology', // Placeholder - should come from backend
-      company_name: data.company_name || ticker.toUpperCase(),
-      sector: data.sector || 'Technology'
+      ticker: data.ticker || ticker.toUpperCase(),
+      market_price: data.market_price || data.price || data.currentPrice || 0,
+      signal: data.signal || 'NEUTRAL',
+      macd: data.macd || 0,
+      price_rate_of_change: data.price_rate_of_change || data.priceRateOfChange || 0,
+      rsi: data.rsi || data.relativeStrengthIndex || 0,
+      stochastic_oscillator: data.stochastic_oscillator || data.stochasticOscillator || 0,
+      industry: data.industry || 'Technology',
+      company_name: data.company_name || data.name || ticker.toUpperCase(),
+      sector: data.sector || 'Technology',
+      ...data // Spread any additional properties from the API
     };
   } catch (error) {
     console.error(`Error fetching ticker details for ${ticker}:`, error);
+    // Return a default object instead of throwing to prevent crashes
+    return {
+      ticker: ticker.toUpperCase(),
+      market_price: 0,
+      signal: 'NEUTRAL',
+      macd: 0,
+      price_rate_of_change: 0,
+      rsi: 0,
+      stochastic_oscillator: 0,
+      industry: 'Unknown',
+      company_name: ticker.toUpperCase(),
+      sector: 'Unknown'
+    };
+  }
+};
+
+export const fetchShortsSqueeze = async (): Promise<any[]> => {
+  try {
+    const response = await fetch(`${BASE_URL}/shorts_squeeze`);
+    if (!response.ok) throw new Error(`Error fetching shorts squeeze data: ${response.statusText}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching shorts squeeze data:', error);
+    throw error;
+  }
+};
+
+export const fetchStockScreener = async (params: {
+  sector?: string;
+  min_1m_performance?: number;
+  min_3m_performance?: number;
+  min_6m_performance?: number;
+  max_1m_performance?: number;
+  max_3m_performance?: number;
+  max_6m_performance?: number;
+  min_price?: number;
+  max_price?: number;
+  min_adr?: number;
+  max_adr?: number;
+  min_rsi?: number;
+  max_rsi?: number;
+  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m';
+  sort_order?: 'asc' | 'desc';
+  limit?: number;
+}): Promise<any[]> => {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Add all non-undefined parameters to query string
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value.toString());
+      }
+    });
+    
+    const url = `${BASE_URL}/stock_screener?${queryParams.toString()}`;
+    console.log('Screener API URL:', url);
+    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Error fetching screener data: ${response.statusText}`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching screener data:', error);
     throw error;
   }
 };

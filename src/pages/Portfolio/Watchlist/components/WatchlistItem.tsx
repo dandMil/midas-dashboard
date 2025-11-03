@@ -4,10 +4,10 @@ import '../../../../css/theme.css';
 import TechnicalIndicator from '../../../../components/TechnicalIndicator.tsx';
 
 const AssetItem = ({ data: initialData }) => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(initialData || []);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.ceil(data.length / 15);
+  const totalPages = Math.ceil((data || []).length / 15);
   const handleToggleWatchlist = async (name, type) => {
     try {
       // Your logic for adding/removing from watchlist
@@ -17,7 +17,7 @@ const AssetItem = ({ data: initialData }) => {
   };
 
   useEffect(() => {
-    setData(initialData);
+    setData(initialData || []);
   }, [initialData]);
 
   return (
@@ -42,15 +42,15 @@ const AssetItem = ({ data: initialData }) => {
           </tr>
         </thead>
         <tbody>
-          {data.slice((currentPage - 1) * 15, currentPage * 15).map((asset, index) => (
+          {(data || []).slice((currentPage - 1) * 15, currentPage * 15).map((asset, index) => (
             <tr key={index}>
-              <td>{asset.name}</td>
-              <td>{asset.price}</td>
-              <td>{asset.signal}</td>
-              <td>{asset.volume}</td>
-              <td>{asset.dateCreated}</td>
+              <td>{asset?.name || 'N/A'}</td>
+              <td>{asset?.price || 'N/A'}</td>
+              <td>{asset?.signal || 'N/A'}</td>
+              <td>{asset?.volume || 'N/A'}</td>
+              <td>{asset?.dateCreated || 'N/A'}</td>
               <td colSpan={9}>
-                      <TechnicalIndicator searchData={[asset.name]} />
+                      <TechnicalIndicator searchData={[asset?.name || 'N/A']} />
                     </td>
               {/* <td>
                 <Button
