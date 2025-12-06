@@ -71,10 +71,13 @@ export const queryLlm = async (payload: Record<string, any>): Promise<any> => {
   }
 };
 
-export const queryTopMovers = async (mover?: string): Promise<any> => {
+export const queryTopMovers = async (mover?: string, includeIndicators: boolean = true): Promise<any> => {
   try {
     let url = `${BASE_URL}/top_movers`;
-    if (mover) url += `?mover=${encodeURIComponent(mover)}`;
+    const params = new URLSearchParams();
+    if (mover) params.append('mover', mover);
+    if (includeIndicators) params.append('include_indicators', 'true');
+    if (params.toString()) url += `?${params.toString()}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Error fetching top movers: ${response.statusText}`);
     return await response.json();
@@ -251,6 +254,93 @@ export const fetchShortsSqueeze = async (): Promise<any[]> => {
   }
 };
 
+
+export const doTransaction = async (payload: {
+  ticker: string;
+  transactionType?: string; // "buy" or "sell" (optional - can use negative shares for sell)
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  // Convert transactionType to positive/negative shares if provided
+  // Backend expects: positive shares = buy, negative shares = sell
+  let shares = payload.shares;
+  if (payload.transactionType) {
+    shares = payload.transactionType.toLowerCase() === 'sell' 
+      ? -Math.abs(payload.shares)  // Make negative for sell
+      : Math.abs(payload.shares);   // Make positive for buy
+  }
+  
+  const requestPayload = {
+    ticker: payload.ticker,
+    shares: shares,
+    current_price: payload.current_price,
+    stop_loss: payload.stop_loss,
+    take_profit: payload.take_profit
+  };
+  
+  const res = await fetch("http://localhost:8000/midas/do_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestPayload),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Transaction failed: ${res.statusText}`);
+  }
+  
+  return await res.json();
+};
+
+export const confirmTransaction = async (payload: {
+  ticker: string;
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  const res = await fetch("/midas/confirm_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+};
+
+export const cancelTransaction = async (payload: {
+  ticker: string;
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  const res = await fetch("/midas/cancel_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+};
+
+export const getTransactionStatus = async (payload: {
+  ticker: string;
+  shares: number;
+  current_price: number;
+  stop_loss: number;
+  take_profit: number;
+}) => {
+  const res = await fetch("/midas/get_transaction_status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return await res.json();
+};
+
+
+
 export const fetchStockScreener = async (params: {
   sector?: string;
   min_1m_performance?: number;
@@ -290,4 +380,71 @@ export const fetchStockScreener = async (params: {
     console.error('Error fetching screener data:', error);
     throw error;
   }
+};
+
+// ------------------------------
+// Paper Trading API Functions
+// ------------------------------
+
+export const doPaperTransaction = async (payload: {
+  ticker: string;
+  transactionType: 'buy' | 'sell';
+  shares: number;
+  current_price: number;
+  stop_loss?: number;
+  take_profit?: number;
+}) => {
+  const adjustedShares = payload.transactionType === 'sell' ? -Math.abs(payload.shares) : Math.abs(payload.shares);
+  
+  const requestPayload = {
+    ticker: payload.ticker,
+    shares: adjustedShares,
+    current_price: payload.current_price,
+    stop_loss: payload.stop_loss,
+    take_profit: payload.take_profit
+  };
+  
+  const res = await fetch("http://localhost:8000/midas/paper_trade/do_transaction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestPayload),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Paper transaction failed: ${res.statusText}`);
+  }
+  
+  return await res.json();
+};
+
+export const getPaperAccount = async () => {
+  const res = await fetch("http://localhost:8000/midas/paper_trade/account");
+  if (!res.ok) throw new Error(`Failed to fetch paper account: ${res.statusText}`);
+  return await res.json();
+};
+
+export const getPaperPortfolio = async () => {
+  const res = await fetch("http://localhost:8000/midas/paper_trade/portfolio");
+  if (!res.ok) throw new Error(`Failed to fetch paper portfolio: ${res.statusText}`);
+  return await res.json();
+};
+
+export const getPaperTransactions = async (limit: number = 50) => {
+  const res = await fetch(`http://localhost:8000/midas/paper_trade/transactions?limit=${limit}`);
+  if (!res.ok) throw new Error(`Failed to fetch paper transactions: ${res.statusText}`);
+  return await res.json();
+};
+
+export const resetPaperAccount = async (startingCapital: number = 100000) => {
+  const res = await fetch("http://localhost:8000/midas/paper_trade/reset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ starting_capital: startingCapital }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Failed to reset paper account: ${res.statusText}`);
+  }
+  return await res.json();
 };

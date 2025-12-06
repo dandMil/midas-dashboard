@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import TickerDetailView from './TickerDetailView.tsx';
-import { fetchStockScreener } from '../services/api.tsx';
+import { fetchStockScreener, doPaperTransaction} from '../services/api.tsx';
 import './css/Dashboard.css';
 import './css/ScreenerView.css';
 import './css/spinner.css';
@@ -58,6 +58,13 @@ const ScreenerView = () => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedResults, setExpandedResults] = useState<{[key: string]: boolean}>({});
+  const [transactionData, setTransactionData] = useState<{[key: string]: {
+    transactionType: 'buy' | 'sell';
+    quantity: string;
+    price: string;
+    stopLoss: string;
+    takeProfit: string;
+  }}>({});
 
   const [filters, setFilters] = useState<ScreenerFilters>({
     sector: 'tech',
@@ -121,11 +128,141 @@ const ScreenerView = () => {
     setSearchParams({ ticker });
   };
 
-  const handleResultExpand = (ticker: string) => {
+  // Calculate suggested stop loss and take profit based on ADR or default percentages
+  const calculateSuggestedStopLoss = (currentPrice: number, adrPercentage?: number) => {
+    if (adrPercentage && adrPercentage > 0) {
+      // Use 2x ADR as stop loss distance (conservative)
+      const stopLossPct = (adrPercentage * 2) / 100;
+      return Math.max(currentPrice * (1 - stopLossPct), currentPrice * 0.95); // Max 5% loss
+    }
+    // Default 5% stop loss
+    return currentPrice * 0.95;
+  };
+
+  const calculateSuggestedTakeProfit = (currentPrice: number, adrPercentage?: number) => {
+    if (adrPercentage && adrPercentage > 0) {
+      // Use 3x ADR as take profit target
+      const takeProfitPct = (adrPercentage * 3) / 100;
+      return currentPrice * (1 + takeProfitPct);
+    }
+    // Default 10% take profit
+    return currentPrice * 1.10;
+  };
+
+  const handleTransactionTypeChange = (ticker: string, transactionType: 'buy' | 'sell', item?: any) => {
+    setTransactionData(prev => {
+      const currentPrice = parseFloat(prev[ticker]?.price || item?.current_price || '0');
+      const adrPct = item?.adr_percentage;
+      
+      // Only suggest stop loss/take profit for buys
+      const suggestedStopLoss = transactionType === 'buy' && currentPrice > 0 
+        ? calculateSuggestedStopLoss(currentPrice, adrPct).toFixed(2)
+        : prev[ticker]?.stopLoss || '';
+      const suggestedTakeProfit = transactionType === 'buy' && currentPrice > 0
+        ? calculateSuggestedTakeProfit(currentPrice, adrPct).toFixed(2)
+        : prev[ticker]?.takeProfit || '';
+
+      return {
+        ...prev,
+        [ticker]: {
+          ...prev[ticker],
+          transactionType,
+          quantity: prev[ticker]?.quantity || '',
+          price: prev[ticker]?.price || (item?.current_price?.toString() || ''),
+          stopLoss: suggestedStopLoss,
+          takeProfit: suggestedTakeProfit
+        }
+      };
+    });
+  };
+
+  const handleTransactionInputChange = (ticker: string, field: string, value: string) => {
+    setTransactionData(prev => ({
+      ...prev,
+      [ticker]: {
+        ...prev[ticker] || {
+          transactionType: 'buy',
+          quantity: '',
+          price: '',
+          stopLoss: '',
+          takeProfit: ''
+        },
+        [field]: value
+      }
+    }));
+  };
+
+  const handleConfirmTransaction = async (ticker: string) => {
+    const data = transactionData[ticker];
+    if (!data) {
+      setError('Please fill in all transaction fields');
+      return;
+    }
+
+    const { transactionType, quantity, price, stopLoss, takeProfit } = data;
+    
+    if (!quantity || !price) {
+      setError('Please fill in quantity and price');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await doPaperTransaction({
+        ticker,
+        transactionType,
+        shares: parseFloat(quantity),
+        current_price: parseFloat(price),
+        stop_loss: stopLoss ? parseFloat(stopLoss) : undefined,
+        take_profit: takeProfit ? parseFloat(takeProfit) : undefined
+      });
+      
+      if (result.success) {
+        alert(result.message);
+        setError(null);
+        // Clear the form
+        setTransactionData(prev => {
+          const newData = { ...prev };
+          delete newData[ticker];
+          return newData;
+        });
+      } else {
+        setError(result.message || 'Transaction failed');
+      }
+    } catch (err: any) {
+      console.error('Error executing transaction:', err);
+      setError(err.message || 'Failed to execute transaction');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleResultExpand = (ticker: string, item?: any) => {
+    const wasExpanded = expandedResults[ticker];
     setExpandedResults(prev => ({
       ...prev,
       [ticker]: !prev[ticker]
     }));
+    
+    // Initialize transaction with defaults when expanding for the first time
+    if (!wasExpanded && item && !transactionData[ticker]) {
+      const currentPrice = item.current_price || 0;
+      const adrPct = item.adr_percentage;
+      const suggestedStopLoss = calculateSuggestedStopLoss(currentPrice, adrPct).toFixed(2);
+      const suggestedTakeProfit = calculateSuggestedTakeProfit(currentPrice, adrPct).toFixed(2);
+
+      setTransactionData(prev => ({
+        ...prev,
+        [ticker]: {
+          transactionType: 'buy',
+          quantity: '',
+          price: currentPrice.toString(),
+          stopLoss: suggestedStopLoss,
+          takeProfit: suggestedTakeProfit
+        }
+      }));
+    }
   };
 
   const handleFilterChange = (key: keyof ScreenerFilters, value: any) => {
@@ -415,6 +552,7 @@ const ScreenerView = () => {
                 <table>
                   <thead>
                     <tr>
+                      <th></th>
                       <th>Ticker</th>
                       <th>Price</th>
                       <th>1M %</th>
@@ -428,29 +566,169 @@ const ScreenerView = () => {
                   </thead>
                   <tbody>
                     {screenerResults.map((item, index) => (
-                      <tr 
-                        key={index}
-                        className="result-row"
-                        onClick={() => handleTickerClick(item.ticker)}
-                      >
-                        <td className="ticker-cell">{item.ticker}</td>
-                        <td>${item.current_price.toFixed(2)}</td>
-                        <td className={item.performance_1m >= 0 ? 'positive' : 'negative'}>
-                          {item.performance_1m.toFixed(1)}%
-                        </td>
-                        <td className={item.performance_3m >= 0 ? 'positive' : 'negative'}>
-                          {item.performance_3m.toFixed(1)}%
-                        </td>
-                        <td className={item.performance_6m >= 0 ? 'positive' : 'negative'}>
-                          {item.performance_6m.toFixed(1)}%
-                        </td>
-                        <td>{item.adr_percentage.toFixed(2)}%</td>
-                        <td>{item.rsi.toFixed(1)}</td>
-                        <td className={`signal ${item.overall_signal.toLowerCase()}`}>
-                          {item.overall_signal}
-                        </td>
-                        <td>{item.overall_score.toFixed(2)}</td>
-                      </tr>
+                      <React.Fragment key={index}>
+                        <tr 
+                          className={`result-row ${expandedResults[item.ticker] ? 'expanded' : ''}`}
+                          onClick={() => handleResultExpand(item.ticker, item)}
+                        >
+                          <td>
+                            <button 
+                              className="expand-table-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResultExpand(item.ticker, item);
+                              }}
+                            >
+                              {expandedResults[item.ticker] ? '▼' : '▶'}
+                            </button>
+                          </td>
+                          <td className="ticker-cell">{item.ticker}</td>
+                          <td>${item.current_price.toFixed(2)}</td>
+                          <td className={item.performance_1m >= 0 ? 'positive' : 'negative'}>
+                            {item.performance_1m.toFixed(1)}%
+                          </td>
+                          <td className={item.performance_3m >= 0 ? 'positive' : 'negative'}>
+                            {item.performance_3m.toFixed(1)}%
+                          </td>
+                          <td className={item.performance_6m >= 0 ? 'positive' : 'negative'}>
+                            {item.performance_6m.toFixed(1)}%
+                          </td>
+                          <td>{item.adr_percentage.toFixed(2)}%</td>
+                          <td>{item.rsi.toFixed(1)}</td>
+                          <td className={`signal ${item.overall_signal.toLowerCase()}`}>
+                            {item.overall_signal}
+                          </td>
+                          <td>{item.overall_score.toFixed(2)}</td>
+                        </tr>
+                        {expandedResults[item.ticker] && (
+                          <tr className="expanded-table-row">
+                            <td colSpan={10}>
+                              <div className="table-expanded-content">
+                                <div className="detail-grid">
+                                  <div className="detail-item">
+                                    <span className="detail-label">3M Performance:</span>
+                                    <span className={`detail-value ${item.performance_3m >= 0 ? 'positive' : 'negative'}`}>
+                                      {item.performance_3m.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">6M Performance:</span>
+                                    <span className={`detail-value ${item.performance_6m >= 0 ? 'positive' : 'negative'}`}>
+                                      {item.performance_6m.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">ADR:</span>
+                                    <span className="detail-value">{item.adr_percentage.toFixed(2)}%</span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">RSI:</span>
+                                    <span className="detail-value">{item.rsi.toFixed(1)}</span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">MACD:</span>
+                                    <span className="detail-value">{item.macd.toFixed(2)}</span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Overall Score:</span>
+                                    <span className="detail-value">{item.overall_score.toFixed(2)}</span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Volume (30d avg):</span>
+                                    <span className="detail-value">{item.volume_avg_30d.toLocaleString()}</span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Last Updated:</span>
+                                    <span className="detail-value">
+                                      {new Date(item.last_updated).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Transaction Type:</span>
+                                    <span className="detail-value">
+                                      <select 
+                                        value={transactionData[item.ticker]?.transactionType || 'buy'}
+                                        onChange={(e) => handleTransactionTypeChange(item.ticker, e.target.value as 'buy' | 'sell')}
+                                        className="transaction-type-select"
+                                      >
+                                        <option value="buy">Buy</option>
+                                        <option value="sell">Sell</option>
+                                      </select>
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Quantity:</span>
+                                    <span className="detail-value">
+                                      <input 
+                                        type="number" 
+                                        placeholder="Quantity" 
+                                        value={transactionData[item.ticker]?.quantity || ''}
+                                        onChange={(e) => handleTransactionInputChange(item.ticker, 'quantity', e.target.value)}
+                                      />
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Price:</span>
+                                    <span className="detail-value">
+                                      <input 
+                                        type="number" 
+                                        placeholder="Price" 
+                                        step="0.01"
+                                        value={transactionData[item.ticker]?.price || item.current_price || ''}
+                                        onChange={(e) => handleTransactionInputChange(item.ticker, 'price', e.target.value)}
+                                      />
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Stop Loss:</span>    
+                                    <span className="detail-value">
+                                      <input 
+                                        type="number" 
+                                        placeholder="Stop Loss" 
+                                        step="0.01"
+                                        value={transactionData[item.ticker]?.stopLoss || ''}
+                                        onChange={(e) => handleTransactionInputChange(item.ticker, 'stopLoss', e.target.value)}
+                                      />
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Take Profit:</span>
+                                    <span className="detail-value">
+                                      <input 
+                                        type="number" 
+                                        placeholder="Take Profit" 
+                                        step="0.01"
+                                        value={transactionData[item.ticker]?.takeProfit || ''}
+                                        onChange={(e) => handleTransactionInputChange(item.ticker, 'takeProfit', e.target.value)}
+                                      />
+                                    </span>
+                                  </div>
+                                  <div className="detail-item">
+                                    <span className="detail-label">Confirm Transaction:</span>
+                                    <span className="detail-value">
+                                      <button 
+                                        className={`confirm-transaction-button ${transactionData[item.ticker]?.transactionType === 'buy' ? 'buy' : 'sell'}`}
+                                        onClick={() => handleConfirmTransaction(item.ticker)}
+                                        disabled={loading}
+                                      >
+                                        Confirm {transactionData[item.ticker]?.transactionType === 'buy' ? 'Purchase' : 'Sell'}
+                                      </button>
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="action-buttons">
+                                  <button 
+                                    className="view-details-button"
+                                    onClick={() => handleTickerClick(item.ticker)}
+                                  >
+                                    View Full Analysis
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>

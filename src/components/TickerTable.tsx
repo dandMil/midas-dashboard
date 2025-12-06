@@ -17,6 +17,18 @@ interface TickerData {
     todaysChange: number;
     updated: number;
     day: DayData;
+    // Optional technical indicators
+    rsi?: number;
+    rsi_signal?: string;
+    macd?: number;
+    macd_signal?: number;
+    stochastic_oscillator?: number;
+    adr_percentage?: number;
+    overall_signal?: string;
+    overall_score?: number;
+    performance_1m?: number;
+    performance_3m?: number;
+    performance_6m?: number;
 }
 
 interface PolygonResponse {
@@ -59,42 +71,70 @@ const TickerTable: React.FC<PolygonResponse> = ({ data: tickers }) => {
                         <th>Ticker</th>
                         <th>Today's Change (%)</th>
                         <th>Today's Change</th>
-                        <th>Open</th>
-                        <th>High</th>
-                        <th>Low</th>
                         <th>Close</th>
                         <th>Volume</th>
-                        <th>VWAP</th>
+                        <th>RSI</th>
+                        <th>Signal</th>
+                        <th>ADR %</th>
+                        <th>1M Perf</th>
                     </tr>
                 </thead>
                 <tbody>
                     {tickers.map((tickerData, index) => (                      
                        <React.Fragment key={index}>
-                <tr onClick={() => handleRowClick(tickerData.ticker)}>
-
-                            <td>{tickerData.ticker}</td>
-                            <td>{tickerData.todaysChangePerc.toFixed(2)}</td>
-                            <td>{tickerData.todaysChange.toFixed(2)}</td>
-                            <td>{tickerData.day.o.toFixed(2)}</td>
-                            <td>{tickerData.day.h.toFixed(2)}</td>
-                            <td>{tickerData.day.l.toFixed(2)}</td>
-                            <td>{tickerData.day.c.toFixed(2)}</td>
-                            <td>{tickerData.day.v}</td>
-                            <td>{tickerData.day.vw.toFixed(2)}</td>
+                        <tr onClick={() => handleRowClick(tickerData.ticker)} style={{ cursor: 'pointer' }}>
+                            <td><strong>{tickerData.ticker}</strong></td>
+                            <td style={{ 
+                                color: tickerData.todaysChangePerc >= 0 ? '#00ff00' : '#ff0000',
+                                fontWeight: 'bold'
+                            }}>
+                                {tickerData.todaysChangePerc.toFixed(2)}%
+                            </td>
+                            <td style={{ 
+                                color: tickerData.todaysChange >= 0 ? '#00ff00' : '#ff0000'
+                            }}>
+                                ${tickerData.todaysChange.toFixed(2)}
+                            </td>
+                            <td>${tickerData.day.c.toFixed(2)}</td>
+                            <td>{tickerData.day.v.toLocaleString()}</td>
+                            <td>{tickerData.rsi ? tickerData.rsi.toFixed(1) : 'N/A'}</td>
+                            <td>
+                                {tickerData.overall_signal ? (
+                                    <span style={{
+                                        color: tickerData.overall_signal === 'BULLISH' ? '#00ff00' : 
+                                               tickerData.overall_signal === 'BEARISH' ? '#ff0000' : '#ffff00',
+                                        fontWeight: 'bold',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        backgroundColor: tickerData.overall_signal === 'BULLISH' ? 'rgba(0, 255, 0, 0.1)' : 
+                                                       tickerData.overall_signal === 'BEARISH' ? 'rgba(255, 0, 0, 0.1)' : 'rgba(255, 255, 0, 0.1)'
+                                    }}>
+                                        {tickerData.overall_signal}
+                                    </span>
+                                ) : 'N/A'}
+                            </td>
+                            <td>{tickerData.adr_percentage ? tickerData.adr_percentage.toFixed(2) + '%' : 'N/A'}</td>
+                            <td style={{ 
+                                color: (tickerData.performance_1m || 0) >= 0 ? '#00ff00' : '#ff0000'
+                            }}>
+                                {tickerData.performance_1m ? tickerData.performance_1m.toFixed(1) + '%' : 'N/A'}
+                            </td>
                         </tr>
                         {expandedRows[tickerData.ticker] && indicatorData[tickerData.ticker] && (
                         <>
-
              <tr>
                   <td colSpan="9">
-                    <TechnicalIndicator searchData={[indicatorData[tickerData.ticker]]} /> {/* Pass the specific asset data to TechnicalIndicator */}
+                    <TechnicalIndicator 
+                      searchData={[indicatorData[tickerData.ticker]]} 
+                      tickerData={tickerData}
+                    />
                   </td>
                 </tr>
-                                  <tr>
-                                  <td colSpan="9">
-                                    <StockChart ticker={tickerData.ticker} timeRange={1} />
-                                  </td>
-                                </tr>
+                <tr>
+                  <td colSpan="9">
+                    <StockChart ticker={tickerData.ticker} timeRange={1} />
+                  </td>
+                </tr>
                                 </>
               )}
             </React.Fragment>

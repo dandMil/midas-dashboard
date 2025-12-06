@@ -17,11 +17,11 @@ const [error, setError] = useState<string | null>(null);
       setLoading(true);
       setError(null);
       try {
-        const jsonData = await queryTopMovers(mover);
+        const jsonData = await queryTopMovers(mover, true); // Request indicators
         console.log('Fetched data:', jsonData);  // ✅ will be an array directly
   
-        setData(jsonData['data']);  // ✅ correct: jsonData is already the array
-        console.log('Length of data:', jsonData.length);
+        setData(jsonData['data'] || jsonData);  // Handle both formats
+        console.log('Length of data:', (jsonData['data'] || jsonData).length);
       } catch (error) {
         console.error('Error fetching data:', error);
         setError('Failed to fetch data.');
