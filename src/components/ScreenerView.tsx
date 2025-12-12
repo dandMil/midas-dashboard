@@ -149,6 +149,18 @@ const ScreenerView = () => {
     return currentPrice * 1.10;
   };
 
+  // Calculate projected profit/loss if stop loss is reached
+  const calculateProjectedStopLossPL = (currentPrice: number, stopLoss: number, quantity: number) => {
+    if (!currentPrice || !stopLoss || !quantity) return 0;
+    return (stopLoss - currentPrice) * quantity;
+  };
+
+  // Calculate projected profit/loss if take profit is reached
+  const calculateProjectedTakeProfitPL = (currentPrice: number, takeProfit: number, quantity: number) => {
+    if (!currentPrice || !takeProfit || !quantity) return 0;
+    return (takeProfit - currentPrice) * quantity;
+  };
+
   const handleTransactionTypeChange = (ticker: string, transactionType: 'buy' | 'sell', item?: any) => {
     setTransactionData(prev => {
       const currentPrice = parseFloat(prev[ticker]?.price || item?.current_price || '0');
@@ -167,7 +179,7 @@ const ScreenerView = () => {
         [ticker]: {
           ...prev[ticker],
           transactionType,
-          quantity: prev[ticker]?.quantity || '',
+          quantity: prev[ticker]?.quantity || '100',
           price: prev[ticker]?.price || (item?.current_price?.toString() || ''),
           stopLoss: suggestedStopLoss,
           takeProfit: suggestedTakeProfit
@@ -182,7 +194,7 @@ const ScreenerView = () => {
       [ticker]: {
         ...prev[ticker] || {
           transactionType: 'buy',
-          quantity: '',
+          quantity: '100',
           price: '',
           stopLoss: '',
           takeProfit: ''
@@ -256,7 +268,7 @@ const ScreenerView = () => {
         ...prev,
         [ticker]: {
           transactionType: 'buy',
-          quantity: '',
+          quantity: '100', // Default to 100 shares
           price: currentPrice.toString(),
           stopLoss: suggestedStopLoss,
           takeProfit: suggestedTakeProfit
@@ -648,7 +660,7 @@ const ScreenerView = () => {
                                     <span className="detail-value">
                                       <select 
                                         value={transactionData[item.ticker]?.transactionType || 'buy'}
-                                        onChange={(e) => handleTransactionTypeChange(item.ticker, e.target.value as 'buy' | 'sell')}
+                                        onChange={(e) => handleTransactionTypeChange(item.ticker, e.target.value as 'buy' | 'sell', item)}
                                         className="transaction-type-select"
                                       >
                                         <option value="buy">Buy</option>
@@ -661,8 +673,8 @@ const ScreenerView = () => {
                                     <span className="detail-value">
                                       <input 
                                         type="number" 
-                                        placeholder="Quantity" 
-                                        value={transactionData[item.ticker]?.quantity || ''}
+                                        placeholder="100" 
+                                        value={transactionData[item.ticker]?.quantity || '100'}
                                         onChange={(e) => handleTransactionInputChange(item.ticker, 'quantity', e.target.value)}
                                       />
                                     </span>
@@ -703,6 +715,38 @@ const ScreenerView = () => {
                                       />
                                     </span>
                                   </div>
+                                  {(() => {
+                                    const quantity = parseFloat(transactionData[item.ticker]?.quantity || '100') || 100;
+                                    const currentPrice = parseFloat(transactionData[item.ticker]?.price || item.current_price?.toString() || '0') || 0;
+                                    const stopLoss = parseFloat(transactionData[item.ticker]?.stopLoss || '0') || 0;
+                                    const takeProfit = parseFloat(transactionData[item.ticker]?.takeProfit || '0') || 0;
+                                    const totalCost = quantity * currentPrice;
+                                    const stopLossPL = calculateProjectedStopLossPL(currentPrice, stopLoss, quantity);
+                                    const takeProfitPL = calculateProjectedTakeProfitPL(currentPrice, takeProfit, quantity);
+                                    
+                                    return (
+                                      <>
+                                        <div className="detail-item">
+                                          <span className="detail-label">Total Cost:</span>
+                                          <span className="detail-value">
+                                            {quantity && currentPrice ? `$${totalCost.toFixed(2)}` : '—'}
+                                          </span>
+                                        </div>
+                                        <div className="detail-item">
+                                          <span className="detail-label">Projected P/L @ Stop Loss:</span>
+                                          <span className={`detail-value ${stopLossPL >= 0 ? 'positive' : 'negative'}`}>
+                                            {stopLoss && quantity ? `$${stopLossPL.toFixed(2)}` : '—'}
+                                          </span>
+                                        </div>
+                                        <div className="detail-item">
+                                          <span className="detail-label">Projected P/L @ Take Profit:</span>
+                                          <span className={`detail-value ${takeProfitPL >= 0 ? 'positive' : 'negative'}`}>
+                                            {takeProfit && quantity ? `$${takeProfitPL.toFixed(2)}` : '—'}
+                                          </span>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
                                   <div className="detail-item">
                                     <span className="detail-label">Confirm Transaction:</span>
                                     <span className="detail-value">
