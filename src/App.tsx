@@ -10,6 +10,7 @@ import AnalyticsView from './components/AnalyticsView.tsx';
 import DailySummary from './components/DailySummary.tsx';
 import ShortsSqueezeView from './components/ShortsSqueezeView.tsx';
 import ScreenerView from './components/ScreenerView.tsx';
+import BacktestingView from './components/BacktestingView.tsx';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/research" element={<ResearchView />} />
             <Route path="/screener" element={<ScreenerView />} />
             <Route path="/shorts-squeeze" element={<ShortsSqueezeView />} />
+            <Route path="/backtesting" element={<BacktestingView />} />
             <Route path="/daily_summary" element={<DailySummary />} />
           </Routes>
         </main>

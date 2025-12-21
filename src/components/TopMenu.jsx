@@ -35,6 +35,7 @@ const TopMenu = () => {
         <button className="nav-button" onClick={() => handleNavigation('/watchlist')}>Watchlist</button>
         <button className="nav-button" onClick={() => handleNavigation('/research')}>Research</button>
         <button className="nav-button" onClick={() => handleNavigation('/screener')}>Screener</button>
+        <button className="nav-button" onClick={() => handleNavigation('/backtesting')}>Backtesting</button>
         <button className="nav-button" onClick={() => handleNavigation('/shorts-squeeze')}>Shorts Squeeze</button>
       </div>
       <div className="right-section">

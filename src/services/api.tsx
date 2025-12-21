@@ -448,3 +448,133 @@ export const resetPaperAccount = async (startingCapital: number = 100000) => {
   }
   return await res.json();
 };
+
+// ------------------------------
+// Backtesting API Functions
+// ------------------------------
+
+export const getHistoricalRankings = async (params: {
+  reference_date: string; // YYYY-MM-DD format
+  top_n?: number;
+  sector?: string;
+  min_price?: number;
+  max_price?: number;
+  min_adr?: number;
+  max_adr?: number;
+  // Performance filters (matching regular scanner)
+  min_1m_performance?: number;
+  max_1m_performance?: number;
+  min_3m_performance?: number;
+  max_3m_performance?: number;
+  min_6m_performance?: number;
+  max_6m_performance?: number;
+  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m';
+  sort_order?: 'asc' | 'desc';
+  // Optimization parameters
+  use_sample?: boolean;
+  sample_size?: number;
+  max_universe_size?: number;
+  enable_rate_limiting?: boolean;
+  // Parallel processing parameters (for Pro tier)
+  max_workers?: number;
+  rate_limit_per_minute?: number;
+}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value.toString());
+      }
+    });
+    
+    const url = `http://localhost:8000/midas/backtest/historical_rankings?${queryParams.toString()}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Error fetching historical rankings: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching historical rankings:', error);
+    throw error;
+  }
+};
+
+export const simulateTrade = async (payload: {
+  ticker: string;
+  entry_date: string; // YYYY-MM-DD
+  entry_price: number;
+  quantity: number;
+  stop_loss?: number;
+  take_profit?: number;
+  exit_date?: string; // YYYY-MM-DD or null
+  max_hold_days?: number;
+  session_id?: string; // Optional: save trade to session
+}) => {
+  const res = await fetch("http://localhost:8000/midas/backtest/simulate_trade", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Trade simulation failed: ${res.statusText}`);
+  }
+  
+  return await res.json();
+};
+
+// Backtesting Session Management API Functions
+
+export const listBacktestSessions = async () => {
+  const res = await fetch("http://localhost:8000/midas/backtest/sessions");
+  if (!res.ok) throw new Error(`Failed to list sessions: ${res.statusText}`);
+  return await res.json();
+};
+
+export const getBacktestSession = async (sessionId: string) => {
+  const res = await fetch(`http://localhost:8000/midas/backtest/sessions/${sessionId}`);
+  if (!res.ok) throw new Error(`Failed to get session: ${res.statusText}`);
+  return await res.json();
+};
+
+export const findBacktestSessionByDate = async (referenceDate: string, sector?: string, sortBy?: string) => {
+  const params = new URLSearchParams();
+  if (sector) params.append('sector', sector);
+  if (sortBy) params.append('sort_by', sortBy);
+  
+  const url = `http://localhost:8000/midas/backtest/sessions/by_date/${referenceDate}${params.toString() ? `?${params.toString()}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to find session: ${res.statusText}`);
+  return await res.json();
+};
+
+export const deleteBacktestSession = async (sessionId: string) => {
+  const res = await fetch(`http://localhost:8000/midas/backtest/sessions/${sessionId}`, {
+    method: "DELETE"
+  });
+  if (!res.ok) throw new Error(`Failed to delete session: ${res.statusText}`);
+  return await res.json();
+};
+
+export const runStrategyBacktest = async (payload: {
+  reference_date: string;
+  top_n?: number;
+  capital_per_trade?: number;
+  stop_loss_pct?: number;
+  take_profit_pct?: number;
+  max_hold_days?: number;
+  exit_date?: string;
+  filters?: any;
+}) => {
+  const res = await fetch("http://localhost:8000/midas/backtest/run_strategy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(errorData.detail || `Strategy backtest failed: ${res.statusText}`);
+  }
+  
+  return await res.json();
+};
