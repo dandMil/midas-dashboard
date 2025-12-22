@@ -899,12 +899,13 @@ const BacktestingView = () => {
 
       {/* Batch Simulation Results */}
       {batchResults.length > 0 && (() => {
-            const totalProfit = batchResults.filter(r => r.profit_loss > 0).reduce((sum, r) => sum + r.profit_loss, 0);
-            const totalLoss = batchResults.filter(r => r.profit_loss < 0).reduce((sum, r) => sum + r.profit_loss, 0);
-            const totalPL = batchResults.reduce((sum, r) => sum + r.profit_loss, 0);
-            const winners = batchResults.filter(r => r.profit_loss > 0);
-            const losers = batchResults.filter(r => r.profit_loss < 0);
-            const avgHoldDays = batchResults.length > 0 ? (batchResults.reduce((sum, r) => sum + r.hold_days, 0) / batchResults.length).toFixed(1) : '0';
+            const totalProfit = batchResults.filter(r => (r.profit_loss ?? 0) > 0).reduce((sum, r) => sum + (r.profit_loss ?? 0), 0);
+            const totalLoss = batchResults.filter(r => (r.profit_loss ?? 0) < 0).reduce((sum, r) => sum + (r.profit_loss ?? 0), 0);
+            const totalPL = batchResults.reduce((sum, r) => sum + (r.profit_loss ?? 0), 0);
+            const totalSpent = batchResults.reduce((sum, r) => sum + (r.total_cost ?? 0), 0);
+            const winners = batchResults.filter(r => (r.profit_loss ?? 0) > 0);
+            const losers = batchResults.filter(r => (r.profit_loss ?? 0) < 0);
+            const avgHoldDays = batchResults.length > 0 ? (batchResults.reduce((sum, r) => sum + (r.hold_days ?? 0), 0) / batchResults.length).toFixed(1) : '0';
             
             // Exit reason breakdown
             const exitReasons: { [key: string]: number } = {};
@@ -949,7 +950,17 @@ const BacktestingView = () => {
                         ${totalPL.toFixed(2)}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                        {batchResults.length > 0 ? ((totalPL / batchResults.reduce((sum, r) => sum + r.total_cost, 0)) * 100).toFixed(2) : '0.00'}% return
+                        {totalSpent > 0 ? ((totalPL / totalSpent) * 100).toFixed(2) : '0.00'}% return
+                      </div>
+                    </div>
+                    
+                    <div style={{ padding: '15px', backgroundColor: 'var(--bg-secondary)', borderRadius: '5px', border: '1px solid var(--border-primary)' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '5px', fontWeight: '600' }}>Total Spent</div>
+                      <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                        ${totalSpent.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
+                        Total capital invested
                       </div>
                     </div>
                     
@@ -986,7 +997,7 @@ const BacktestingView = () => {
                     </div>
                     <div>
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                        {batchResults.length > 0 ? (batchResults.reduce((sum, r) => sum + r.profit_loss_pct, 0) / batchResults.length).toFixed(2) : '0.00'}%
+                        {batchResults.length > 0 ? (batchResults.reduce((sum, r) => sum + (r.profit_loss_pct ?? 0), 0) / batchResults.length).toFixed(2) : '0.00'}%
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg P/L %</div>
                     </div>
@@ -1032,51 +1043,58 @@ const BacktestingView = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {batchResults.map((result, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-primary)', backgroundColor: idx % 2 === 0 ? 'var(--bg-tertiary)' : 'var(--bg-secondary)' }}>
-                            <td style={{ padding: '10px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{result.ticker || 'N/A'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', color: 'var(--text-primary)' }}>${result.entry_price.toFixed(2)}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', color: 'var(--text-primary)' }}>
-                              {result.exit_price ? `$${result.exit_price.toFixed(2)}` : 'N/A'}
-                            </td>
-                            <td style={{ 
-                              padding: '10px', 
-                              textAlign: 'right', 
-                              color: result.profit_loss >= 0 ? 'var(--accent-primary)' : '#ff4444',
-                              fontWeight: 'bold'
-                            }}>
-                              ${result.profit_loss >= 0 ? '+' : ''}{result.profit_loss.toFixed(2)}
-                            </td>
-                            <td style={{ 
-                              padding: '10px', 
-                              textAlign: 'right', 
-                              color: result.profit_loss_pct >= 0 ? 'var(--accent-primary)' : '#ff4444',
-                              fontWeight: 'bold'
-                            }}>
-                              {result.profit_loss_pct >= 0 ? '+' : ''}{result.profit_loss_pct.toFixed(2)}%
-                            </td>
-                            <td style={{ padding: '10px', textAlign: 'center', color: 'var(--text-primary)' }}>
-                              {result.exit_date ? formatDate(result.exit_date) : 'N/A'}
-                            </td>
-                            <td style={{ padding: '10px', textAlign: 'center', fontSize: '12px' }}>
-                              <span style={{ 
-                                padding: '4px 8px', 
-                                borderRadius: '3px',
-                                backgroundColor: result.exit_reason === 'TAKE_PROFIT' ? 'rgba(0, 255, 65, 0.2)' : 
-                                                result.exit_reason === 'STOP_LOSS' ? 'rgba(255, 68, 68, 0.2)' :
-                                                result.exit_reason === 'MAX_HOLD_DAYS' ? 'rgba(255, 193, 7, 0.2)' : 'var(--bg-secondary)',
-                                color: result.exit_reason === 'TAKE_PROFIT' ? 'var(--accent-primary)' :
-                                       result.exit_reason === 'STOP_LOSS' ? '#ff4444' :
-                                       result.exit_reason === 'MAX_HOLD_DAYS' ? '#ffc107' : 'var(--text-primary)',
-                                border: `1px solid ${result.exit_reason === 'TAKE_PROFIT' ? 'rgba(0, 255, 65, 0.3)' : 
-                                                      result.exit_reason === 'STOP_LOSS' ? 'rgba(255, 68, 68, 0.3)' :
-                                                      result.exit_reason === 'MAX_HOLD_DAYS' ? 'rgba(255, 193, 7, 0.3)' : 'var(--border-primary)'}`
+                        {batchResults.map((result, idx) => {
+                          const entryPrice = result.entry_price ?? 0;
+                          const exitPrice = result.exit_price ?? null;
+                          const profitLoss = result.profit_loss ?? 0;
+                          const profitLossPct = result.profit_loss_pct ?? 0;
+                          
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--border-primary)', backgroundColor: idx % 2 === 0 ? 'var(--bg-tertiary)' : 'var(--bg-secondary)' }}>
+                              <td style={{ padding: '10px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{result.ticker || 'N/A'}</td>
+                              <td style={{ padding: '10px', textAlign: 'right', color: 'var(--text-primary)' }}>${entryPrice.toFixed(2)}</td>
+                              <td style={{ padding: '10px', textAlign: 'right', color: 'var(--text-primary)' }}>
+                                {exitPrice ? `$${exitPrice.toFixed(2)}` : 'N/A'}
+                              </td>
+                              <td style={{ 
+                                padding: '10px', 
+                                textAlign: 'right', 
+                                color: profitLoss >= 0 ? 'var(--accent-primary)' : '#ff4444',
+                                fontWeight: 'bold'
                               }}>
-                                {result.exit_reason || 'N/A'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                                ${profitLoss >= 0 ? '+' : ''}{profitLoss.toFixed(2)}
+                              </td>
+                              <td style={{ 
+                                padding: '10px', 
+                                textAlign: 'right', 
+                                color: profitLossPct >= 0 ? 'var(--accent-primary)' : '#ff4444',
+                                fontWeight: 'bold'
+                              }}>
+                                {profitLossPct >= 0 ? '+' : ''}{profitLossPct.toFixed(2)}%
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', color: 'var(--text-primary)' }}>
+                                {result.exit_date ? formatDate(result.exit_date) : 'N/A'}
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', fontSize: '12px' }}>
+                                <span style={{ 
+                                  padding: '4px 8px', 
+                                  borderRadius: '3px',
+                                  backgroundColor: result.exit_reason === 'TAKE_PROFIT' ? 'rgba(0, 255, 65, 0.2)' : 
+                                                  result.exit_reason === 'STOP_LOSS' ? 'rgba(255, 68, 68, 0.2)' :
+                                                  result.exit_reason === 'MAX_HOLD_DAYS' ? 'rgba(255, 193, 7, 0.2)' : 'var(--bg-secondary)',
+                                  color: result.exit_reason === 'TAKE_PROFIT' ? 'var(--accent-primary)' :
+                                         result.exit_reason === 'STOP_LOSS' ? '#ff4444' :
+                                         result.exit_reason === 'MAX_HOLD_DAYS' ? '#ffc107' : 'var(--text-primary)',
+                                  border: `1px solid ${result.exit_reason === 'TAKE_PROFIT' ? 'rgba(0, 255, 65, 0.3)' : 
+                                                        result.exit_reason === 'STOP_LOSS' ? 'rgba(255, 68, 68, 0.3)' :
+                                                        result.exit_reason === 'MAX_HOLD_DAYS' ? 'rgba(255, 193, 7, 0.3)' : 'var(--border-primary)'}`
+                                }}>
+                                  {result.exit_reason || 'N/A'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
