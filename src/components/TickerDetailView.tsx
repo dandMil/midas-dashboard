@@ -10,10 +10,19 @@ interface TickerDetailViewProps {
 }
 
 type VolumePoint = { date: string; volume: number };
+type VolumeStats = {
+  period: string;
+  average: number;
+  total: number;
+  max: number;
+  min: number;
+  days: number;
+};
 
 const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType = 'stock' }) => {
   const [tickerData, setTickerData] = useState<any>(null);
   const [volume, setVolume] = useState<VolumePoint[] | null>(null);
+  const [volumeStats, setVolumeStats] = useState<VolumeStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [volumeLoading, setVolumeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +46,60 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
     }
   };
 
+  const calculateStats = (data: VolumePoint[]): VolumeStats | null => {
+    if (!data || data.length === 0) return null;
+    
+    const volumes = data.map(d => d.volume);
+    const total = volumes.reduce((sum, vol) => sum + vol, 0);
+    const average = total / volumes.length;
+    const max = Math.max(...volumes);
+    const min = Math.min(...volumes);
+    
+    return {
+      period: '',
+      average: Math.round(average),
+      total: total,
+      max: max,
+      min: min,
+      days: data.length
+    };
+  };
+
   const loadVolumeData = async () => {
     setVolumeLoading(true);
     try {
-      const data = await fetchAssetVolume(ticker, '1M');
-      setVolume(data);
+      // Fetch volume data for all periods
+      const periods = [
+        { key: '1D', label: 'Last Day' },
+        { key: '7D', label: '7 Days' },
+        { key: '1M', label: 'Month' },
+        { key: '3M', label: '3 Months' },
+        { key: '6M', label: '6 Months' },
+        { key: 'YTD', label: 'YTD' }
+      ];
+
+      const statsPromises = periods.map(async (period) => {
+        try {
+          const data = await fetchAssetVolume(ticker, period.key);
+          const stats = calculateStats(data);
+          if (stats) {
+            stats.period = period.label;
+            return stats;
+          }
+          return null;
+        } catch (err) {
+          console.error(`Failed to load volume data for ${period.label}:`, err);
+          return null;
+        }
+      });
+
+      const statsResults = await Promise.all(statsPromises);
+      const validStats = statsResults.filter((s): s is VolumeStats => s !== null);
+      setVolumeStats(validStats);
+
+      // Set the 1M data for the chart (default view)
+      const monthData = await fetchAssetVolume(ticker, '1M');
+      setVolume(monthData);
     } catch (err: any) {
       console.error('Failed to load volume data:', err);
     } finally {
@@ -184,6 +242,36 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
       {/* Volume Chart Section */}
       <div className="volume-section">
         <h3>Volume Analysis</h3>
+        
+        {/* Volume Statistics Table */}
+        {volumeStats.length > 0 && (
+          <div className="volume-stats-table">
+            <table className="volume-stats">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Average Volume</th>
+                  <th>Total Volume</th>
+                  <th>Max Volume</th>
+                  <th>Min Volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                {volumeStats.map((stat, index) => (
+                  <tr key={index}>
+                    <td><strong>{stat.period}</strong></td>
+                    <td>{stat.average.toLocaleString()}</td>
+                    <td>{stat.total.toLocaleString()}</td>
+                    <td>{stat.max.toLocaleString()}</td>
+                    <td>{stat.min.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Volume Chart */}
         {volumeLoading && (
           <div className="volume-loading">
             <div className="spinner"></div>
@@ -192,6 +280,7 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
         )}
         {!volumeLoading && volume && volume.length > 0 && (
           <div className="volume-chart-wrapper">
+            <h4>Volume Chart (Last Month)</h4>
             <VolumeChart data={volume} width={1000} height={300} />
           </div>
         )}

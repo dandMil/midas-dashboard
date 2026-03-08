@@ -341,6 +341,17 @@ export const getTransactionStatus = async (payload: {
 
 
 
+export const getAvailableSectors = async (): Promise<any> => {
+  try {
+    const response = await fetch('http://localhost:8000/midas/asset/available_sectors');
+    if (!response.ok) throw new Error(`Error fetching available sectors: ${response.statusText}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching available sectors:', error);
+    throw error;
+  }
+};
+
 export const fetchStockScreener = async (params: {
   sector?: string;
   min_1m_performance?: number;
@@ -410,12 +421,21 @@ export const doPaperTransaction = async (payload: {
     body: JSON.stringify(requestPayload),
   });
   
+  const data = await res.json();
+  
+  // Check for HTTP errors
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(errorData.detail || `Paper transaction failed: ${res.statusText}`);
+    throw new Error(data.detail || `Paper transaction failed: ${res.statusText}`);
   }
   
-  return await res.json();
+  // Check for business logic errors (backend returns success: false but HTTP 200)
+  if (data.success === false) {
+    const error = new Error(data.message || data.error || 'Transaction failed');
+    (error as any).response = { data };
+    throw error;
+  }
+  
+  return data;
 };
 
 export const getPaperAccount = async () => {

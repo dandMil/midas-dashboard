@@ -21,6 +21,8 @@ interface Position {
   stop_loss: number | null;
   take_profit: number | null;
   updated_at: string;
+  date_purchased: string;
+  days_to_close_window: number | null;
 }
 
 interface Account {
@@ -51,8 +53,10 @@ const Portfolio = () => {
     showInput: boolean;
   }}>({});
 
-  const loadPortfolio = async () => {
-    setLoading(true);
+  const loadPortfolio = async (showLoading: boolean = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [portfolioData, accountData] = await Promise.all([
@@ -65,14 +69,17 @@ const Portfolio = () => {
       console.error('Error loading portfolio:', err);
       setError(err.message || 'Failed to load portfolio');
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadPortfolio();
-    // Refresh every 30 seconds to update prices
-    const interval = setInterval(loadPortfolio, 30000);
+    // Initial load with loading indicator
+    loadPortfolio(true);
+    // Refresh every 30 seconds to update prices (without loading indicator)
+    const interval = setInterval(() => loadPortfolio(false), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -143,8 +150,8 @@ const Portfolio = () => {
           delete newData[position.ticker];
           return newData;
         });
-        // Reload portfolio
-        loadPortfolio();
+        // Reload portfolio without loading indicator
+        loadPortfolio(false);
       } else {
         alert(result.message || 'Transaction failed');
       }
@@ -232,6 +239,8 @@ const Portfolio = () => {
               <th>Unrealized P&L</th>
               <th>Stop Loss</th>
               <th>Take Profit</th>
+              <th>Date Purchased</th>
+              <th>Days to Close Window</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -252,6 +261,14 @@ const Portfolio = () => {
                   </td>
                   <td>{position.stop_loss ? `$${position.stop_loss.toFixed(2)}` : '—'}</td>
                   <td>{position.take_profit ? `$${position.take_profit.toFixed(2)}` : '—'}</td>
+                  <td>{position.date_purchased ? new Date(position.date_purchased).toLocaleDateString() : '—'}</td>
+                  <td style={{ 
+                    color: position.days_to_close_window !== null && position.days_to_close_window <= 7 ? '#ff4444' : 
+                           position.days_to_close_window !== null && position.days_to_close_window <= 14 ? '#ffaa00' : 
+                           'var(--text-primary)'
+                  }}>
+                    {position.days_to_close_window !== null ? position.days_to_close_window : '—'}
+                  </td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {transactionData[position.ticker]?.showInput ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -314,12 +331,12 @@ const Portfolio = () => {
                 {expandedRows[position.ticker] && indicatorData[position.ticker] && (
                   <>
                     <tr>
-                      <td colSpan={9}>
+                      <td colSpan={11}>
                         <TechnicalIndicator searchData={[indicatorData[position.ticker]]} />
                       </td>
                     </tr>
                     <tr>
-                      <td colSpan={9}>
+                      <td colSpan={11}>
                         <StockChart ticker={position.ticker} timeRange={1} />
                       </td>
                     </tr>

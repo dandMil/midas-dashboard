@@ -74,8 +74,10 @@ const ScreenerView = () => {
 
   // Batch buying selection state
   const [selectedTickers, setSelectedTickers] = useState<Set<string>>(new Set());
-  const [batchSelectionMode, setBatchSelectionMode] = useState<'all' | 'none' | 'bullish' | 'bearish' | 'score_range' | 'manual'>('none');
+  const [batchSelectionMode, setBatchSelectionMode] = useState<'all' | 'none' | 'bullish' | 'bearish' | 'top_x_bullish' | 'score_range' | 'manual'>('none');
   const [scoreRange, setScoreRange] = useState({ min: '', max: '' });
+  const [topX, setTopX] = useState<string>('10');
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [batchBuying, setBatchBuying] = useState(false);
   
   // Batch trade configuration
@@ -87,6 +89,8 @@ const ScreenerView = () => {
     takeProfitType: 'percentage' as 'percentage' | 'absolute',
     takeProfitPercentage: '10',
     takeProfitAbsolute: '',
+    priceFloor: '', // Optional: Only purchase stocks at or above this price
+    priceCeiling: '', // Optional: Only purchase stocks at or below this price
   });
 
   const [filters, setFilters] = useState<ScreenerFilters>({
@@ -404,35 +408,82 @@ const ScreenerView = () => {
   };
 
 
+  // Apply price filter to stocks
+  const applyPriceFilter = (stocks: ScreenerResult[]): ScreenerResult[] => {
+    const minPrice = parseFloat(priceRange.min);
+    const maxPrice = parseFloat(priceRange.max);
+    
+    if (isNaN(minPrice) && isNaN(maxPrice)) {
+      return stocks; // No price filter applied
+    }
+    
+    return stocks.filter(stock => {
+      if (!isNaN(minPrice) && stock.current_price < minPrice) return false;
+      if (!isNaN(maxPrice) && stock.current_price > maxPrice) return false;
+      return true;
+    });
+  };
+
   // Get stocks to buy based on selection mode
   const getStocksToBuy = (): ScreenerResult[] => {
+    let stocks: ScreenerResult[] = [];
+    
     switch (batchSelectionMode) {
       case 'all':
-        return screenerResults;
+        stocks = screenerResults;
+        break;
       
       case 'none':
-        return [];
+        stocks = [];
+        break;
       
       case 'bullish':
-        return screenerResults.filter(stock => stock.overall_signal === 'BULLISH');
+        stocks = screenerResults.filter(stock => stock.overall_signal === 'BULLISH');
+        break;
       
       case 'bearish':
-        return screenerResults.filter(stock => stock.overall_signal === 'BEARISH');
+        stocks = screenerResults.filter(stock => stock.overall_signal === 'BEARISH');
+        break;
+      
+      case 'top_x_bullish':
+        const topXCount = parseInt(topX) || 10;
+        // Filter bullish stocks, apply price filter, sort by overall_score (descending), then take top X
+        stocks = screenerResults
+          .filter(stock => stock.overall_signal === 'BULLISH')
+          .filter(stock => {
+            const minPrice = parseFloat(priceRange.min);
+            const maxPrice = parseFloat(priceRange.max);
+            if (!isNaN(minPrice) && stock.current_price < minPrice) return false;
+            if (!isNaN(maxPrice) && stock.current_price > maxPrice) return false;
+            return true;
+          })
+          .sort((a, b) => b.overall_score - a.overall_score)
+          .slice(0, topXCount);
+        break;
       
       case 'score_range':
         const minScore = parseFloat(scoreRange.min) || -Infinity;
         const maxScore = parseFloat(scoreRange.max) || Infinity;
-        return screenerResults.filter(stock => {
+        stocks = screenerResults.filter(stock => {
           const score = stock.overall_score;
           return score >= minScore && score <= maxScore;
         });
+        break;
       
       case 'manual':
-        return screenerResults.filter(stock => selectedTickers.has(stock.ticker));
+        stocks = screenerResults.filter(stock => selectedTickers.has(stock.ticker));
+        break;
       
       default:
-        return [];
+        stocks = [];
     }
+    
+    // Apply price filter to all modes except 'top_x_bullish' (already filtered above)
+    if (batchSelectionMode !== 'top_x_bullish') {
+      stocks = applyPriceFilter(stocks);
+    }
+    
+    return stocks;
   };
 
   const handleSelectionModeChange = (mode: typeof batchSelectionMode) => {
@@ -443,7 +494,7 @@ const ScreenerView = () => {
       setSelectedTickers(new Set(screenerResults.map(s => s.ticker)));
     } else if (mode === 'none') {
       setSelectedTickers(new Set());
-    } else if (mode === 'bullish' || mode === 'bearish' || mode === 'score_range') {
+    } else if (mode === 'bullish' || mode === 'bearish' || mode === 'top_x_bullish' || mode === 'score_range') {
       // Will be filtered in getStocksToBuy
       setSelectedTickers(new Set());
     } else if (mode === 'manual') {
@@ -508,11 +559,28 @@ const ScreenerView = () => {
     setError(null);
 
     try {
+      // Apply price floor and ceiling filters if specified
+      const priceFloor = parseFloat(batchTradeConfig.priceFloor);
+      const priceCeiling = parseFloat(batchTradeConfig.priceCeiling);
+      
+      const filteredStocks = stocksToBuy.filter(stock => {
+        if (!isNaN(priceFloor) && stock.current_price < priceFloor) return false;
+        if (!isNaN(priceCeiling) && stock.current_price > priceCeiling) return false;
+        return true;
+      });
+
+      if (filteredStocks.length === 0) {
+        setError(`No stocks match the price filter (Floor: ${isNaN(priceFloor) ? 'Any' : '$' + priceFloor.toFixed(2)}, Ceiling: ${isNaN(priceCeiling) ? 'Any' : '$' + priceCeiling.toFixed(2)})`);
+        setBatchBuying(false);
+        return;
+      }
+
       let successCount = 0;
       let failCount = 0;
+      const failedStocks: Array<{ticker: string; reason: string}> = [];
 
-      for (let i = 0; i < stocksToBuy.length; i++) {
-        const stock = stocksToBuy[i];
+      for (let i = 0; i < filteredStocks.length; i++) {
+        const stock = filteredStocks[i];
         try {
           // Calculate stop loss and take profit based on current price and type
           let stopLoss: number;
@@ -532,7 +600,7 @@ const ScreenerView = () => {
             takeProfit = parseFloat(batchTradeConfig.takeProfitAbsolute);
           }
 
-          await doPaperTransaction({
+          const result = await doPaperTransaction({
             ticker: stock.ticker,
             transactionType: 'buy',
             shares: quantity,
@@ -541,18 +609,63 @@ const ScreenerView = () => {
             take_profit: takeProfit
           });
 
-          successCount++;
+          // Check if the transaction was successful
+          if (result && result.success === false) {
+            const errorMsg = result.message || result.error || 'Unknown error';
+            failedStocks.push({ ticker: stock.ticker, reason: errorMsg });
+            failCount++;
+            console.error(`Failed to buy ${stock.ticker}:`, errorMsg);
+          } else {
+            successCount++;
+          }
         } catch (err: any) {
-          console.error(`Error buying ${stock.ticker}:`, err);
+          // Extract error message from various possible formats
+          let errorMessage = 'Unknown error';
+          if (err?.response?.data?.message) {
+            errorMessage = err.response.data.message;
+          } else if (err?.response?.data?.detail) {
+            errorMessage = err.response.data.detail;
+          } else if (err?.response?.data?.error) {
+            errorMessage = err.response.data.error;
+          } else if (err?.message) {
+            errorMessage = err.message;
+          }
+          
+          failedStocks.push({ ticker: stock.ticker, reason: errorMessage });
           failCount++;
-          // Continue with next stock
+          console.error(`Error buying ${stock.ticker}:`, err);
         }
       }
 
       if (successCount > 0) {
-        setError(`Successfully purchased ${successCount} stock(s).${failCount > 0 ? ` ${failCount} failed.` : ''}`);
+        const totalFiltered = filteredStocks.length;
+        const skippedCount = totalFiltered - successCount - failCount;
+        let message = `✅ Successfully purchased ${successCount} stock(s)`;
+        if (failCount > 0) {
+          message += `\n❌ ${failCount} failed:`;
+          // Show first 5 failed stocks with reasons
+          const displayFailures = failedStocks.slice(0, 5);
+          displayFailures.forEach(f => {
+            message += `\n   • ${f.ticker}: ${f.reason}`;
+          });
+          if (failedStocks.length > 5) {
+            message += `\n   ... and ${failedStocks.length - 5} more`;
+          }
+        }
+        if (skippedCount > 0) message += `\n⚠️ ${skippedCount} skipped`;
+        if (totalFiltered < stocksToBuy.length) {
+          message += `\n📊 ${stocksToBuy.length - totalFiltered} filtered out by price`;
+        }
+        setError(message);
       } else {
-        setError(`Failed to purchase any stocks. ${failCount} error(s).`);
+        let errorMsg = `❌ Failed to purchase any stocks. ${failCount} error(s):\n`;
+        failedStocks.slice(0, 10).forEach(f => {
+          errorMsg += `   • ${f.ticker}: ${f.reason}\n`;
+        });
+        if (failedStocks.length > 10) {
+          errorMsg += `   ... and ${failedStocks.length - 10} more`;
+        }
+        setError(errorMsg);
       }
 
       // Clear selection after successful batch buy
@@ -648,12 +761,12 @@ const ScreenerView = () => {
     );
   }
 
-  if (error) {
+  if (error && !screenerResults.length) {
     return (
       <div className="dashboard-container">
         <div className="error-container">
           <h2>Error Loading Data</h2>
-          <p>{error}</p>
+          <p style={{ whiteSpace: 'pre-line' }}>{error}</p>
           <button onClick={fetchScreenerData} className="retry-button">
             Retry
           </button>
@@ -934,6 +1047,17 @@ const ScreenerView = () => {
                       <input
                         type="radio"
                         name="batchSelection"
+                        checked={batchSelectionMode === 'top_x_bullish'}
+                        onChange={() => handleSelectionModeChange('top_x_bullish')}
+                        style={{ marginRight: '8px' }}
+                      />
+                      Top X Bullish
+                    </label>
+                    
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                      <input
+                        type="radio"
+                        name="batchSelection"
                         checked={batchSelectionMode === 'score_range'}
                         onChange={() => handleSelectionModeChange('score_range')}
                         style={{ marginRight: '8px' }}
@@ -980,6 +1104,56 @@ const ScreenerView = () => {
                     </div>
                   )}
 
+                  {/* Top X Bullish Input */}
+                  {batchSelectionMode === 'top_x_bullish' && (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                      <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Top X:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={topX}
+                        onChange={(e) => setTopX(e.target.value)}
+                        placeholder="e.g. 10"
+                        style={{ width: '100px', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+                      />
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        (Selecting top {topX || '10'} bullish stocks by score)
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Price Range Filter - Available for all modes except none and manual */}
+                  {(batchSelectionMode !== 'none' && batchSelectionMode !== 'manual') && (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px', padding: '10px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '5px', border: '1px solid var(--border-primary)' }}>
+                      <label style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 'bold' }}>Price Filter (Optional):</label>
+                      <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Min Price ($):</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={priceRange.min}
+                        onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                        placeholder="e.g. 1.00"
+                        style={{ width: '100px', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+                      />
+                      <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Max Price ($):</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={priceRange.max}
+                        onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                        placeholder="e.g. 50.00"
+                        style={{ width: '100px', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+                      />
+                      {(priceRange.min || priceRange.max) && (
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          ({getStocksToBuy().length} stocks in price range)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Batch Trade Configuration */}
                   <div style={{ borderTop: '1px solid var(--border-primary)', paddingTop: '15px', marginTop: '15px' }}>
                     <h5 style={{ margin: '0 0 15px 0', color: 'var(--text-primary)' }}>Batch Trade Configuration</h5>
@@ -995,6 +1169,42 @@ const ScreenerView = () => {
                           style={{ width: '100%', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
                         />
                       </div>
+                    </div>
+
+                    {/* Price Filter (Optional) */}
+                    <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '5px', border: '1px solid var(--border-primary)' }}>
+                      <label style={{ fontWeight: 'bold', marginBottom: '10px', display: 'block', color: 'var(--text-primary)' }}>Price Filter (Optional):</label>
+                      <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Floor ($):</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={batchTradeConfig.priceFloor}
+                            onChange={(e) => setBatchTradeConfig({ ...batchTradeConfig, priceFloor: e.target.value })}
+                            placeholder="Min price"
+                            style={{ width: '120px', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+                          />
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Only purchase at or above</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <label style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Ceiling ($):</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={batchTradeConfig.priceCeiling}
+                            onChange={(e) => setBatchTradeConfig({ ...batchTradeConfig, priceCeiling: e.target.value })}
+                            placeholder="Max price"
+                            style={{ width: '120px', padding: '5px', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+                          />
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Only purchase at or below</span>
+                        </div>
+                      </div>
+                      {(batchTradeConfig.priceFloor || batchTradeConfig.priceCeiling) && (
+                        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          Stocks will be filtered by price before batch purchase
+                        </div>
+                      )}
                     </div>
 
                     {/* Stop Loss Configuration */}
@@ -1118,6 +1328,22 @@ const ScreenerView = () => {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Error Display for Batch Operations */}
+                  {error && batchBuying === false && (
+                    <div style={{ 
+                      marginTop: '15px', 
+                      padding: '12px', 
+                      backgroundColor: error.includes('✅') ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 68, 68, 0.1)',
+                      border: `1px solid ${error.includes('✅') ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`,
+                      borderRadius: '5px',
+                      color: 'var(--text-primary)',
+                      fontSize: '14px',
+                      whiteSpace: 'pre-line'
+                    }}>
+                      {error}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1158,7 +1384,8 @@ const ScreenerView = () => {
                   <tbody>
                     {screenerResults.map((item, index) => {
                       const isSelected = selectedTickers.has(item.ticker);
-                      const isHighlighted = batchSelectionMode === 'score_range' && getStocksToBuy().some(s => s.ticker === item.ticker);
+                      const stocksToBuy = getStocksToBuy();
+                      const isHighlighted = (batchSelectionMode === 'score_range' || batchSelectionMode === 'top_x_bullish') && stocksToBuy.some(s => s.ticker === item.ticker);
                       
                       return (
                         <React.Fragment key={index}>

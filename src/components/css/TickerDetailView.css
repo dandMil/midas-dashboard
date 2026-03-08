@@ -314,6 +314,56 @@
   color: var(--text-secondary);
 }
 
+.volume-stats-table {
+  margin-bottom: var(--spacing-lg);
+  overflow-x: auto;
+}
+
+.volume-stats {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 2px 8px var(--shadow-secondary);
+}
+
+.volume-stats thead {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.volume-stats th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.volume-stats td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.volume-stats tbody tr:hover {
+  background-color: var(--bg-secondary);
+  transition: background-color 0.2s ease;
+}
+
+.volume-stats tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.volume-chart-wrapper h4 {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .ticker-detail-container {
