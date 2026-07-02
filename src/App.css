@@ -1,8 +1,8 @@
-/* App.css - Modern Terminal Theme */
+/* App shell */
 .App {
-  text-align: center;
+  text-align: left;
   min-height: 100vh;
-  background-color: var(--bg-primary);
+  background-color: transparent;
   color: var(--text-primary);
   font-family: var(--font-family-secondary);
 }
@@ -66,12 +66,16 @@
   }
 }
 
-/* Main Content Area */
+/* Main content — centered column, comfortable reading width */
 .App-main {
-  margin-top: 80px; /* Account for fixed top menu */
-  padding: var(--spacing-lg);
-  min-height: calc(100vh - 80px);
-  background-color: var(--bg-primary);
+  margin-top: 76px;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
+  min-height: calc(100vh - 76px);
+  background-color: transparent;
+  max-width: 1680px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
 }
 
 /* Fetched Data Styles */

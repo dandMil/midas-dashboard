@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchTickerDetails, fetchAssetVolume, fetchTechnicalAnalysis } from '../services/api.tsx';
 import TechnicalAnalysis from './TechnicalAnalysis.tsx';
-import VolumeChart from './VolumeChart.tsx';
+import PriceVolumeChart from './PriceVolumeChart.tsx';
 import './css/TickerDetailView.css';
 
 interface TickerDetailViewProps {
@@ -9,7 +9,6 @@ interface TickerDetailViewProps {
   assetType?: string;
 }
 
-type VolumePoint = { date: string; volume: number };
 type VolumeStats = {
   period: string;
   average: number;
@@ -21,7 +20,6 @@ type VolumeStats = {
 
 const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType = 'stock' }) => {
   const [tickerData, setTickerData] = useState<any>(null);
-  const [volume, setVolume] = useState<VolumePoint[] | null>(null);
   const [volumeStats, setVolumeStats] = useState<VolumeStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [volumeLoading, setVolumeLoading] = useState(false);
@@ -46,7 +44,7 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
     }
   };
 
-  const calculateStats = (data: VolumePoint[]): VolumeStats | null => {
+  const calculateStats = (data: { volume: number }[]): VolumeStats | null => {
     if (!data || data.length === 0) return null;
     
     const volumes = data.map(d => d.volume);
@@ -96,10 +94,6 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
       const statsResults = await Promise.all(statsPromises);
       const validStats = statsResults.filter((s): s is VolumeStats => s !== null);
       setVolumeStats(validStats);
-
-      // Set the 1M data for the chart (default view)
-      const monthData = await fetchAssetVolume(ticker, '1M');
-      setVolume(monthData);
     } catch (err: any) {
       console.error('Failed to load volume data:', err);
     } finally {
@@ -271,24 +265,22 @@ const TickerDetailView: React.FC<TickerDetailViewProps> = ({ ticker, assetType =
           </div>
         )}
 
-        {/* Volume Chart */}
         {volumeLoading && (
           <div className="volume-loading">
             <div className="spinner"></div>
-            <p className="spinner-text">Loading volume data...</p>
+            <p className="spinner-text">Loading volume statistics…</p>
           </div>
         )}
-        {!volumeLoading && volume && volume.length > 0 && (
-          <div className="volume-chart-wrapper">
-            <h4>Volume Chart (Last Month)</h4>
-            <VolumeChart data={volume} width={1000} height={300} />
-          </div>
-        )}
-        {!volumeLoading && volume && volume.length === 0 && (
-          <div className="volume-empty">
-            <p className="text-secondary">No volume data available for this ticker.</p>
-          </div>
-        )}
+
+        <div className="volume-chart-wrapper price-volume-panel">
+          <h4>Price, support / resistance &amp; volume</h4>
+          <p className="chart-context-hint">
+            Each session shows a Strat label (1 · 2U · 2D · 3) under the candle vs the prior bar. Candles and
+            volume share the same axis; volume bars match candle direction. Tooltip includes full OHLCV and Strat
+            signal.
+          </p>
+          <PriceVolumeChart ticker={ticker} days={30} />
+        </div>
       </div>
     </div>
   );

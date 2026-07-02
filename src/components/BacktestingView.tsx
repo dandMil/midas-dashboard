@@ -25,6 +25,12 @@ interface HistoricalRanking {
   };
   overall_signal: string;
   overall_score: number;
+  strat_scenario?: string | null;
+  strat_pattern?: string | null;
+  strat_signal?: string | null;
+  strat_score?: number | null;
+  strat_htf_scenario?: string | null;
+  strat_aligned?: boolean | null;
   volume_avg_30d: number;
   last_updated: string;
 }
@@ -44,6 +50,15 @@ interface TradeSimulation {
   price_history?: any[];
   events?: any[];
   ticker?: string; // For batch simulations
+  risk_management?: {
+    applied: boolean;
+    original_stop_loss?: number;
+    effective_stop_loss?: number;
+    risk_at_original_stop_dollars?: number;
+    max_risk_dollars?: number;
+    portfolio_balance?: number;
+    max_risk_pct_of_portfolio?: number;
+  };
 }
 
 interface ScreeningStrategy {
@@ -65,8 +80,82 @@ interface ScreeningStrategy {
     max_6m_performance?: number;
     sort_by: string;
     sort_order: string;
+    signal_method?: 'indicators' | 'the_strat';
+    strat_timeframe?: '1h' | '4h' | '1d' | '1w';
+    strat_htf?: 'none' | '1h' | '4h' | '1d' | '1w';
+    strat_alignment?: 'off' | 'info' | 'strict';
   };
 }
+
+const STRAT_TF_RANK: Record<string, number> = { '1h': 1, '4h': 2, '1d': 3, '1w': 4 };
+
+function normalizeStratHtf(
+  ltf: string,
+  htf: string
+): 'none' | '1h' | '4h' | '1d' | '1w' {
+  if (htf === 'none') return 'none';
+  const lr = STRAT_TF_RANK[ltf] ?? 3;
+  const hr = STRAT_TF_RANK[htf] ?? 0;
+  if (hr <= lr) return 'none';
+  return htf as '1h' | '4h' | '1d' | '1w';
+}
+
+function htfChoicesForLtf(ltf: string) {
+  const lr = STRAT_TF_RANK[ltf] ?? 3;
+  const rows: { value: string; label: string }[] = [{ value: 'none', label: 'None' }];
+  (['1h', '4h', '1d', '1w'] as const).forEach((tf) => {
+    if (STRAT_TF_RANK[tf] > lr) {
+      const label = tf === '1h' ? '1 hour' : tf === '4h' ? '4 hour' : tf === '1d' ? 'Daily' : 'Weekly';
+      rows.push({ value: tf, label });
+    }
+  });
+  return rows;
+}
+
+/** Optional backtest risk cap: max dollar loss at stop (long exit) as % of portfolio; tightens stop when needed. */
+function buildStopRiskPayload(portfolioBalance: string, maxStopRiskPctOfPortfolio: string) {
+  const pct = parseFloat(maxStopRiskPctOfPortfolio);
+  const payload: { portfolio_balance?: number; max_stop_risk_pct_of_portfolio?: number } = {};
+  if (!isNaN(pct) && pct > 0) {
+    payload.max_stop_risk_pct_of_portfolio = pct;
+    const pb = parseFloat(portfolioBalance);
+    if (!isNaN(pb) && pb > 0) payload.portfolio_balance = pb;
+  }
+  return payload;
+}
+
+const SCREENING_STRATEGY_PRESETS: ScreeningStrategy[] = [
+  {
+    id: 'adr_stack_rank',
+    name: 'ADR stack rank',
+    type: 'screening',
+    description:
+      'After filters, rankings are sorted by ADR% (highest first)—not by the Signal column. Signal is a separate technical stack (MACD, RSI, stochastic, 1M momentum) for context.',
+    filters: {
+      sort_by: 'adr',
+      sort_order: 'desc',
+      signal_method: 'indicators',
+      strat_timeframe: '1d',
+      strat_htf: 'none',
+      strat_alignment: 'off',
+    },
+  },
+  {
+    id: 'the_strat',
+    name: 'The Strat (Rob Smith)',
+    type: 'screening',
+    description:
+      'Strat scenarios on your chosen bar size (e.g. 4H swing), optional higher timeframe for trend; strict mode only keeps longs/shorts when the HTF bias agrees.',
+    filters: {
+      sort_by: 'strat_score',
+      sort_order: 'desc',
+      signal_method: 'the_strat',
+      strat_timeframe: '4h',
+      strat_htf: '1d',
+      strat_alignment: 'strict',
+    },
+  },
+];
 
 interface SellingStrategy {
   id: string;
@@ -110,6 +199,8 @@ const BacktestingView = () => {
     stopLoss: '',
     takeProfit: '',
     maxHoldDays: '60', // Default max hold for swing trades
+    portfolioBalance: '100000',
+    maxStopRiskPctOfPortfolio: '', // e.g. 2 = cap loss at stop to 2% of portfolio; empty = off
   });
   
   // Batch simulation config (supports percentage-based stops)
@@ -124,6 +215,8 @@ const BacktestingView = () => {
     maxHoldDays: '60',
     priceFloor: '', // Optional: Only purchase stocks at or above this price
     priceCeiling: '', // Optional: Only purchase stocks at or below this price
+    portfolioBalance: '100000',
+    maxStopRiskPctOfPortfolio: '',
   });
   const [tradeResult, setTradeResult] = useState<TradeSimulation | null>(null);
   const [batchResults, setBatchResults] = useState<TradeSimulation[]>([]);
@@ -148,16 +241,16 @@ const BacktestingView = () => {
   const [showSessions, setShowSessions] = useState(false);
   
   // Strategy state
-  const [currentScreeningStrategy, setCurrentScreeningStrategy] = useState<ScreeningStrategy>({
-    id: 'adr_stack_rank',
-    name: 'ADR Stack Rank',
-    type: 'screening',
-    description: 'Ranks stocks by ADR with performance filters (1M, 3M, 6M)',
-    filters: {
-      sort_by: 'adr',
-      sort_order: 'desc',
-    }
-  });
+  const [currentScreeningStrategy, setCurrentScreeningStrategy] = useState<ScreeningStrategy>(
+    SCREENING_STRATEGY_PRESETS[0]
+  );
+
+  const patchScreeningFilters = (patch: Partial<ScreeningStrategy['filters']>) => {
+    setCurrentScreeningStrategy((prev) => ({
+      ...prev,
+      filters: { ...prev.filters, ...patch },
+    }));
+  };
 
   // Batch simulation selection state
   const [selectedTickers, setSelectedTickers] = useState<Set<string>>(new Set());
@@ -222,8 +315,24 @@ const BacktestingView = () => {
 
     try {
       // First check if session exists for this date and sector
+      const f = currentScreeningStrategy.filters;
+      const sortBy = f.sort_by ?? 'adr';
+      const sortOrder = f.sort_order ?? 'desc';
+      const signalMethod = f.signal_method ?? 'indicators';
+      const stratTimeframe = f.strat_timeframe ?? '1d';
+      const stratHtf = f.strat_htf ?? 'none';
+      const stratAlignment = f.strat_alignment ?? 'off';
+
       try {
-        const existingSession = await findBacktestSessionByDate(referenceDate, selectedSector, 'adr');
+        const existingSession = await findBacktestSessionByDate(
+          referenceDate,
+          selectedSector,
+          sortBy,
+          signalMethod,
+          stratTimeframe,
+          stratHtf,
+          stratAlignment
+        );
         if (existingSession && existingSession.historical_rankings) {
           setHistoricalRankings(existingSession.historical_rankings);
           setCurrentSessionId(existingSession.session_id);
@@ -239,8 +348,12 @@ const BacktestingView = () => {
         reference_date: referenceDate,
         sector: selectedSector,
         top_n: topN,
-        sort_by: 'adr',
-        sort_order: 'desc',
+        sort_by: sortBy as 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m' | 'strat_score' | 'overall_score',
+        sort_order: sortOrder as 'asc' | 'desc',
+        signal_method: signalMethod,
+        strat_timeframe: stratTimeframe,
+        strat_htf: stratHtf,
+        strat_alignment: stratAlignment,
         // Parallel processing (Pro tier defaults)
         max_workers: 5,  // 5 concurrent workers
         rate_limit_per_minute: 200  // Pro tier: 200 calls/minute
@@ -293,7 +406,19 @@ const BacktestingView = () => {
       
       // Restore strategy if it exists
       if (session.screening_strategy) {
-        setCurrentScreeningStrategy(session.screening_strategy);
+        const ss = session.screening_strategy as ScreeningStrategy;
+        setCurrentScreeningStrategy({
+          ...ss,
+          filters: {
+            sort_by: 'adr',
+            sort_order: 'desc',
+            signal_method: 'indicators',
+            strat_timeframe: '1d',
+            strat_htf: 'none',
+            strat_alignment: 'off',
+            ...ss.filters,
+          },
+        });
       }
       
       // Clear previous results
@@ -451,12 +576,13 @@ const BacktestingView = () => {
     const takeProfitPct = Math.max((adrPct * 3) / 100, 0.10);
     const suggestedTakeProfit = (currentPrice * (1 + takeProfitPct)).toFixed(2);
 
-    setTradeConfig({
+    setTradeConfig((prev) => ({
+      ...prev,
       quantity: '100',
       stopLoss: suggestedStopLoss,
       takeProfit: suggestedTakeProfit,
-      maxHoldDays: '60', // Default max hold for swing trades
-    });
+      maxHoldDays: '60',
+    }));
     setTradeResult(null); // Clear any previous single trade result
     setBatchResults([]); // Clear any previous batch results
   };
@@ -500,7 +626,8 @@ const BacktestingView = () => {
         stop_loss: stopLoss,
         take_profit: takeProfit,
         max_hold_days: maxHoldDays,
-        session_id: currentSessionId || undefined, // Save to current session if available
+        session_id: currentSessionId || undefined,
+        ...buildStopRiskPayload(tradeConfig.portfolioBalance, tradeConfig.maxStopRiskPctOfPortfolio),
       });
 
       setTradeResult(result);
@@ -652,6 +779,7 @@ const BacktestingView = () => {
                 take_profit: takeProfit,
                 max_hold_days: maxHoldDays,
                 session_id: currentSessionId || undefined,
+                ...buildStopRiskPayload(batchTradeConfig.portfolioBalance, batchTradeConfig.maxStopRiskPctOfPortfolio),
               });
 
               const key = `${combo.stopLoss}-${combo.takeProfit}`;
@@ -696,7 +824,7 @@ const BacktestingView = () => {
         setBatchResults(top3[0]?.trades || []); // Display trades from best combination
 
         window.alert(`Exploration complete!\n\nTop 3 Combinations:\n${top3.map((r, idx) => 
-          `${idx + 1}. SL ${r.stopLoss}% / TP ${r.takeProfit}%: Net Profit $${r.netProfit.toFixed(2)} (Win Rate: ${r.winRate.toFixed(1)}%)`
+          `${idx + 1}. SL ${r.stopLoss}% / TP ${r.takeProfit}%: Net P&L $${r.netProfit.toFixed(2)} (Win Rate: ${r.winRate.toFixed(1)}%)`
         ).join('\n')}`);
       } else {
         // Normal mode: single combination
@@ -750,6 +878,7 @@ const BacktestingView = () => {
               take_profit: takeProfit,
               max_hold_days: maxHoldDays,
               session_id: currentSessionId || undefined,
+              ...buildStopRiskPayload(batchTradeConfig.portfolioBalance, batchTradeConfig.maxStopRiskPctOfPortfolio),
             });
 
             results.push({ ...result, ticker: stock.ticker });
@@ -799,9 +928,9 @@ const BacktestingView = () => {
         <div className="search-bar-container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div>
-              <h2>Backtesting: ADR Performance Rank Strategy</h2>
+              <h2>Backtesting: historical rankings &amp; trade simulation</h2>
               <p className="search-description">
-                Step 1: Select a sector → Step 2: Select a historical date to see how stocks were ranked by ADR at that point in time, then simulate trades forward
+                Choose sector, reference date, and screening strategy (ADR stack or The Strat), fetch point-in-time rankings, then simulate trades forward
               </p>
               {currentSessionId && (
                 <p style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -909,6 +1038,108 @@ const BacktestingView = () => {
             />
             <p className="config-hint">Number of top-ranked stocks to display</p>
           </div>
+
+          <div className="config-group">
+            <label>Screening strategy</label>
+            <select
+              value={currentScreeningStrategy.id}
+              onChange={(e) => {
+                const next = SCREENING_STRATEGY_PRESETS.find((p) => p.id === e.target.value);
+                if (next) setCurrentScreeningStrategy(next);
+                setHistoricalRankings([]);
+                setSelectedStock(null);
+                setTradeResult(null);
+              }}
+              disabled={loading}
+              style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+            >
+              {SCREENING_STRATEGY_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <p className="config-hint">{currentScreeningStrategy.description}</p>
+          </div>
+
+          {currentScreeningStrategy.id === 'the_strat' && (
+            <>
+              <div className="config-group">
+                <label>Strat bar timeframe</label>
+                <select
+                  value={currentScreeningStrategy.filters.strat_timeframe ?? '4h'}
+                  onChange={(e) => {
+                    const ltf = e.target.value as NonNullable<ScreeningStrategy['filters']['strat_timeframe']>;
+                    patchScreeningFilters({
+                      strat_timeframe: ltf,
+                      strat_htf: normalizeStratHtf(ltf, currentScreeningStrategy.filters.strat_htf ?? 'none'),
+                    });
+                  }}
+                  disabled={loading}
+                  style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                >
+                  <option value="1h">1 hour</option>
+                  <option value="4h">4 hour</option>
+                  <option value="1d">Daily</option>
+                  <option value="1w">Weekly</option>
+                </select>
+              </div>
+              <div className="config-group">
+                <label>Higher timeframe (trend)</label>
+                <select
+                  value={currentScreeningStrategy.filters.strat_htf ?? 'none'}
+                  onChange={(e) => {
+                    const nh = e.target.value as NonNullable<ScreeningStrategy['filters']['strat_htf']>;
+                    const prev = currentScreeningStrategy.filters;
+                    const nextAlign =
+                      nh === 'none'
+                        ? 'off'
+                        : (prev.strat_alignment ?? 'off') === 'off'
+                          ? 'info'
+                          : prev.strat_alignment;
+                    patchScreeningFilters({ strat_htf: nh, strat_alignment: nextAlign });
+                  }}
+                  disabled={loading}
+                  style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                >
+                  {htfChoicesForLtf(currentScreeningStrategy.filters.strat_timeframe ?? '4h').map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="config-group">
+                <label>HTF alignment</label>
+                <select
+                  value={
+                    (currentScreeningStrategy.filters.strat_htf ?? 'none') === 'none'
+                      ? 'off'
+                      : (currentScreeningStrategy.filters.strat_alignment ?? 'off') === 'off'
+                        ? 'info'
+                        : (currentScreeningStrategy.filters.strat_alignment ?? 'info')
+                  }
+                  onChange={(e) =>
+                    patchScreeningFilters({
+                      strat_alignment: e.target.value as NonNullable<ScreeningStrategy['filters']['strat_alignment']>,
+                    })
+                  }
+                  disabled={loading || (currentScreeningStrategy.filters.strat_htf ?? 'none') === 'none'}
+                  style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                >
+                  {(currentScreeningStrategy.filters.strat_htf ?? 'none') === 'none' ? (
+                    <option value="off">N/A (no higher TF)</option>
+                  ) : (
+                    <>
+                      <option value="info">Show HTF + flag (no filter)</option>
+                      <option value="strict">Require same direction as HTF</option>
+                    </>
+                  )}
+                </select>
+                <p className="config-hint">Strict neutralizes LTF long/short when HTF disagrees</p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="config-actions">
@@ -948,9 +1179,41 @@ const BacktestingView = () => {
             <h4 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>Current Strategy: {currentScreeningStrategy.name}</h4>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>{currentScreeningStrategy.description}</p>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-muted)', fontSize: '12px' }}>
-              Type: <strong>{currentScreeningStrategy.type}</strong> | 
-              Sort: <strong>{currentScreeningStrategy.filters.sort_by.toUpperCase()}</strong> ({currentScreeningStrategy.filters.sort_order})
+              Type: <strong>{currentScreeningStrategy.type}</strong> |{' '}
+              Sort: <strong>{currentScreeningStrategy.filters.sort_by.toUpperCase()}</strong> (
+              {currentScreeningStrategy.filters.sort_order}) |               Signal:{' '}
+              <strong>{currentScreeningStrategy.filters.signal_method === 'the_strat' ? 'The Strat' : 'Technical stack'}</strong>
+              {currentScreeningStrategy.filters.signal_method === 'the_strat' && (
+                <>
+                  {' '}
+                  | Bar: <strong>{currentScreeningStrategy.filters.strat_timeframe ?? '1d'}</strong>
+                  {(currentScreeningStrategy.filters.strat_htf ?? 'none') !== 'none' && (
+                    <>
+                      {' '}
+                      | HTF: <strong>{currentScreeningStrategy.filters.strat_htf}</strong>(
+                      {currentScreeningStrategy.filters.strat_alignment ?? 'info'})
+                    </>
+                  )}
+                </>
+              )}
             </p>
+            {currentScreeningStrategy.id === 'adr_stack_rank' && (
+              <p
+                style={{
+                  margin: '10px 0 0 0',
+                  padding: '10px 12px',
+                  fontSize: '13px',
+                  lineHeight: 1.45,
+                  color: 'var(--text-primary)',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-primary)',
+                }}
+              >
+                <strong>How to read this:</strong> Row order follows <strong>ADR (desc)</strong>—highest average daily range at the top.
+                The <strong>Signal</strong> column is independent (indicator stack); it does not set rank. High ADR means more movement, not necessarily bullish.
+              </p>
+            )}
           </div>
 
           {/* Batch Selection Controls */}
@@ -1148,6 +1411,31 @@ const BacktestingView = () => {
                     onChange={(e) => setBatchTradeConfig({ ...batchTradeConfig, maxHoldDays: e.target.value })}
                     min="1"
                   />
+                </div>
+
+                <div className="config-group" style={{ gridColumn: '1 / -1' }}>
+                  <label>Risk cap (optional)</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Portfolio ($)</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1000"
+                      value={batchTradeConfig.portfolioBalance}
+                      onChange={(e) => setBatchTradeConfig({ ...batchTradeConfig, portfolioBalance: e.target.value })}
+                      style={{ width: '110px', padding: '5px' }}
+                    />
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Max loss at stop (%)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="off"
+                      value={batchTradeConfig.maxStopRiskPctOfPortfolio}
+                      onChange={(e) => setBatchTradeConfig({ ...batchTradeConfig, maxStopRiskPctOfPortfolio: e.target.value })}
+                      style={{ width: '72px', padding: '5px' }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1360,7 +1648,7 @@ const BacktestingView = () => {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '14px' }}>
                   <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Net Profit:</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Net P&amp;L (all trades):</span>
                     <div style={{ 
                       color: result.netProfit >= 0 ? 'var(--accent-primary)' : '#ff4444', 
                       fontWeight: 'bold', 
@@ -1382,13 +1670,13 @@ const BacktestingView = () => {
                     </div>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Total Profit:</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Gross from winners:</span>
                     <div style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>
                       ${result.totalProfit.toFixed(2)}
                     </div>
                   </div>
                   <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Total Loss:</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Gross from losers:</span>
                     <div style={{ color: '#ff4444', fontWeight: 'bold' }}>
                       ${Math.abs(result.totalLoss).toFixed(2)}
                     </div>
@@ -1453,32 +1741,32 @@ const BacktestingView = () => {
                   {/* Profit/Loss Breakdown */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px' }}>
                     <div style={{ padding: '15px', backgroundColor: 'rgba(0, 255, 65, 0.1)', borderRadius: '5px', border: '1px solid rgba(0, 255, 65, 0.3)' }}>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '5px', fontWeight: '600' }}>Total Profit</div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '5px', fontWeight: '600' }}>Gross from winners</div>
                       <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
                         ${totalProfit.toFixed(2)}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                        {winners.length} winning trades
+                        Sum of P&amp;L on {winners.length} winning trade{winners.length === 1 ? '' : 's'} only
                       </div>
                     </div>
                     
                     <div style={{ padding: '15px', backgroundColor: 'rgba(255, 68, 68, 0.1)', borderRadius: '5px', border: '1px solid rgba(255, 68, 68, 0.3)' }}>
-                      <div style={{ fontSize: '14px', color: '#ff6b6b', marginBottom: '5px', fontWeight: '600' }}>Total Loss</div>
+                      <div style={{ fontSize: '14px', color: '#ff6b6b', marginBottom: '5px', fontWeight: '600' }}>Gross from losers</div>
                       <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ff4444' }}>
                         ${Math.abs(totalLoss).toFixed(2)}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                        {losers.length} losing trades
+                        Sum of losses on {losers.length} losing trade{losers.length === 1 ? '' : 's'} (absolute value)
                       </div>
                     </div>
                     
                     <div style={{ padding: '15px', backgroundColor: totalPL >= 0 ? 'rgba(0, 255, 65, 0.1)' : 'rgba(255, 68, 68, 0.1)', borderRadius: '5px', border: `1px solid ${totalPL >= 0 ? 'rgba(0, 255, 65, 0.3)' : 'rgba(255, 68, 68, 0.3)'}` }}>
-                      <div style={{ fontSize: '14px', color: totalPL >= 0 ? 'var(--text-secondary)' : '#ff6b6b', marginBottom: '5px', fontWeight: '600' }}>Net Total</div>
+                      <div style={{ fontSize: '14px', color: totalPL >= 0 ? 'var(--text-secondary)' : '#ff6b6b', marginBottom: '5px', fontWeight: '600' }}>Net P&amp;L (all trades)</div>
                       <div style={{ fontSize: '28px', fontWeight: 'bold', color: totalPL >= 0 ? 'var(--accent-primary)' : '#ff4444' }}>
                         ${totalPL.toFixed(2)}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '5px' }}>
-                        {totalSpent > 0 ? ((totalPL / totalSpent) * 100).toFixed(2) : '0.00'}% return
+                        Winners plus losers combined · {totalSpent > 0 ? ((totalPL / totalSpent) * 100).toFixed(2) : '0.00'}% vs capital deployed
                       </div>
                     </div>
                     
@@ -1515,13 +1803,13 @@ const BacktestingView = () => {
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                         {winners.length > 0 ? (totalProfit / winners.length).toFixed(2) : '0.00'}
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg Profit per Winner</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg P&amp;L per winning trade</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                         {losers.length > 0 ? (Math.abs(totalLoss) / losers.length).toFixed(2) : '0.00'}
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg Loss per Loser</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg loss per losing trade</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
@@ -1639,6 +1927,11 @@ const BacktestingView = () => {
             <p className="results-subtitle">
               Rankings calculated using only data available up to this date
             </p>
+            {currentScreeningStrategy.id === 'adr_stack_rank' && (
+              <p className="results-subtitle" style={{ marginTop: '10px', maxWidth: '52rem' }}>
+                Sorted by <strong>ADR%</strong> (highest first). <strong>Signal</strong> is the technical stack only and does not determine order.
+              </p>
+            )}
           </div>
 
           <div className="results-table">
@@ -1669,7 +1962,20 @@ const BacktestingView = () => {
                   <th>3M %</th>
                   <th>6M %</th>
                   <th>RSI</th>
-                  <th>Signal</th>
+                  <th>
+                    Signal
+                    {currentScreeningStrategy.id === 'adr_stack_rank' && (
+                      <span style={{ fontWeight: 'normal', fontSize: '11px', display: 'block', color: 'var(--text-muted)' }}>
+                        stack, not sort
+                      </span>
+                    )}
+                  </th>
+                  <th>
+                    Strat
+                    <span style={{ fontWeight: 'normal', fontSize: '11px', display: 'block', color: 'var(--text-muted)' }}>
+                      {currentScreeningStrategy.filters.strat_timeframe ?? '1d'}
+                    </span>
+                  </th>
                   <th>Score</th>
                   <th>Action</th>
                 </tr>
@@ -1713,6 +2019,19 @@ const BacktestingView = () => {
                       <td>{stock.rsi.toFixed(1)}</td>
                       <td className={`signal ${stock.overall_signal.toLowerCase()}`}>
                         {stock.overall_signal}
+                      </td>
+                      <td
+                        title={
+                          [
+                            stock.strat_pattern,
+                            stock.strat_htf_scenario != null ? `HTF: ${stock.strat_htf_scenario}` : '',
+                            stock.strat_aligned != null ? `Aligned: ${stock.strat_aligned}` : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' | ') || undefined
+                        }
+                      >
+                        {stock.strat_scenario ?? '—'}
                       </td>
                       <td>{stock.overall_score.toFixed(2)}</td>
                       <td>
@@ -1789,6 +2108,34 @@ const BacktestingView = () => {
                 Maximum days to hold the position before forced exit
               </small>
             </div>
+
+            <div className="config-group" style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontWeight: 600 }}>Risk cap (optional, long stops / sell at stop)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Portfolio balance ($)</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1000"
+                  value={tradeConfig.portfolioBalance}
+                  onChange={(e) => setTradeConfig({ ...tradeConfig, portfolioBalance: e.target.value })}
+                  style={{ width: '120px', padding: '6px' }}
+                />
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Max loss at stop (% of balance)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="off"
+                  value={tradeConfig.maxStopRiskPctOfPortfolio}
+                  onChange={(e) => setTradeConfig({ ...tradeConfig, maxStopRiskPctOfPortfolio: e.target.value })}
+                  style={{ width: '80px', padding: '6px' }}
+                />
+              </div>
+              <small style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                If set, the stop is tightened so (entry − stop) × shares ≤ that % of portfolio (default balance $100k if left blank).
+              </small>
+            </div>
           </div>
 
           <div className="trade-actions">
@@ -1850,6 +2197,18 @@ const BacktestingView = () => {
                     ${tradeResult.profit_loss.toFixed(2)} ({tradeResult.profit_loss_pct.toFixed(2)}%)
                   </span>
                 </div>
+                {tradeResult.risk_management?.applied && (
+                  <div className="result-item" style={{ gridColumn: '1 / -1' }}>
+                    <span className="result-label">Risk cap:</span>
+                    <span className="result-value" style={{ fontSize: '0.9rem' }}>
+                      Stop adjusted ${tradeResult.risk_management.original_stop_loss?.toFixed(2)} → $
+                      {tradeResult.risk_management.effective_stop_loss?.toFixed(2)} (max ~$
+                      {tradeResult.risk_management.max_risk_dollars?.toFixed(2)} at stop,{' '}
+                      {tradeResult.risk_management.max_risk_pct_of_portfolio}% of $
+                      {tradeResult.risk_management.portfolio_balance?.toLocaleString()})
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

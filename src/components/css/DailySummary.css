@@ -1,3 +1,9 @@
+.daily-summary-container {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-xs);
+}
+
 /* Asset Type Tabs */
 .asset-tabs {
   display: flex;
@@ -180,12 +186,26 @@
 
 .inline-volume-chart-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   padding: var(--spacing-sm);
   background-color: var(--bg-primary);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-secondary);
+  overflow-x: auto;
+}
+
+.inline-volume-chart-wrapper .volume-chart-root {
+  width: 100%;
+  min-width: 280px;
+}
+
+.inline-volume-chart-wrapper .volume-chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+  display: block;
 }
 
 .volume-loading {

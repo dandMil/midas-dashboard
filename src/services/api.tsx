@@ -2,8 +2,34 @@
 const BASE_URL = 'http://localhost:8000/midas/asset';
 const ANALYTICS_URL = 'http://localhost:8000/query';
 
-// Type definition for volume data
-type VolumePoint = { date: string; volume: number };
+// Volume history (includes OHLC when backend provides it — for colored volume bars)
+export type VolumeBarPoint = {
+  date: string;
+  volume: number;
+  o?: number;
+  c?: number;
+  h?: number;
+  l?: number;
+};
+
+export type ChartBar = {
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v?: number;
+  /** The Strat vs prior bar: 1, 2U, 2D, 3 — null for first bar */
+  strat_scenario?: string | null;
+  /** BULLISH / BEARISH / NEUTRAL from strat_signal_and_score */
+  strat_signal?: string | null;
+};
+
+export type ChartBarsResponse = {
+  results: ChartBar[];
+  support: number | null;
+  resistance: number | null;
+};
 
 export const fetchRecommendations = async (): Promise<any[]> => {
   try {
@@ -149,7 +175,7 @@ export const sellAsset = async (payload: {
 export const fetchAssetVolume = async (
   ticker: string,
   range: string = '1M'
-): Promise<VolumePoint[]> => {
+): Promise<VolumeBarPoint[]> => {
   if (!ticker) throw new Error('ticker is required');
 
   const url = `${BASE_URL}/volume?ticker=${encodeURIComponent(ticker)}&range=${encodeURIComponent(range)}`;
@@ -159,7 +185,7 @@ export const fetchAssetVolume = async (
     throw new Error(`Error fetching volume for ${ticker}: ${res.status} ${res.statusText}`);
   }
 
-  // Backend returns an array like [{ date, volume }, ...]
+  // Backend returns an array like [{ date, volume, o?, h?, l?, c? }, ...]
   const raw = await res.json();
 
   // Be tolerant if the backend ever wraps it in { data: [...] }
@@ -167,8 +193,29 @@ export const fetchAssetVolume = async (
 
   return (arr || [])
     .filter((d) => d && d.date && typeof d.volume === 'number')
-    .map((d) => ({ date: String(d.date), volume: Number(d.volume) }))
+    .map((d) => ({
+      date: String(d.date),
+      volume: Number(d.volume),
+      o: d.o !== undefined && d.o !== null ? Number(d.o) : undefined,
+      h: d.h !== undefined && d.h !== null ? Number(d.h) : undefined,
+      l: d.l !== undefined && d.l !== null ? Number(d.l) : undefined,
+      c: d.c !== undefined && d.c !== null ? Number(d.c) : undefined,
+    }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
+export const fetchChartBars = async (
+  ticker: string,
+  days: number = 30
+): Promise<ChartBarsResponse> => {
+  if (!ticker) throw new Error('ticker is required');
+  const d = Math.max(5, Math.min(730, Math.floor(days)));
+  const url = `${BASE_URL}/chart_bars?ticker=${encodeURIComponent(ticker)}&days=${d}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Error fetching chart bars for ${ticker}: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
 };
 
 export const fetchCryptoSummary = async (): Promise<any[]> => {
@@ -366,9 +413,18 @@ export const fetchStockScreener = async (params: {
   max_adr?: number;
   min_rsi?: number;
   max_rsi?: number;
-  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m';
+  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m' | 'strat_score';
   sort_order?: 'asc' | 'desc';
   limit?: number;
+  /** indicators (default) or the_strat — Strat drives signal/score when the_strat */
+  signal_method?: 'indicators' | 'the_strat';
+  strat_timeframe?: '1h' | '4h' | '1d' | '1w';
+  strat_htf?: 'none' | '1h' | '4h' | '1d' | '1w';
+  strat_alignment?: 'off' | 'info' | 'strict';
+  common_stock_only?: boolean;
+  exclude_thin_books?: boolean;
+  min_avg_share_volume?: number;
+  min_avg_dollar_volume?: number;
 }): Promise<any[]> => {
   try {
     const queryParams = new URLSearchParams();
@@ -488,8 +544,12 @@ export const getHistoricalRankings = async (params: {
   max_3m_performance?: number;
   min_6m_performance?: number;
   max_6m_performance?: number;
-  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m';
+  sort_by?: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m' | 'strat_score' | 'overall_score';
   sort_order?: 'asc' | 'desc';
+  signal_method?: 'indicators' | 'the_strat';
+  strat_timeframe?: '1h' | '4h' | '1d' | '1w';
+  strat_htf?: 'none' | '1h' | '4h' | '1d' | '1w';
+  strat_alignment?: 'off' | 'info' | 'strict';
   // Optimization parameters
   use_sample?: boolean;
   sample_size?: number;
@@ -526,7 +586,11 @@ export const simulateTrade = async (payload: {
   take_profit?: number;
   exit_date?: string; // YYYY-MM-DD or null
   max_hold_days?: number;
-  session_id?: string; // Optional: save trade to session
+  session_id?: string;
+  /** Notional account size when using max_stop_risk_pct_of_portfolio (server default 100k if omitted). */
+  portfolio_balance?: number;
+  /** Cap dollar loss at stop to this % of portfolio (long only); server tightens stop if needed. */
+  max_stop_risk_pct_of_portfolio?: number;
 }) => {
   const res = await fetch("http://localhost:8000/midas/backtest/simulate_trade", {
     method: "POST",
@@ -556,10 +620,22 @@ export const getBacktestSession = async (sessionId: string) => {
   return await res.json();
 };
 
-export const findBacktestSessionByDate = async (referenceDate: string, sector?: string, sortBy?: string) => {
+export const findBacktestSessionByDate = async (
+  referenceDate: string,
+  sector?: string,
+  sortBy?: string,
+  signalMethod?: 'indicators' | 'the_strat',
+  stratTimeframe?: string,
+  stratHtf?: string,
+  stratAlignment?: string
+) => {
   const params = new URLSearchParams();
   if (sector) params.append('sector', sector);
   if (sortBy) params.append('sort_by', sortBy);
+  params.append('signal_method', signalMethod ?? 'indicators');
+  params.append('strat_timeframe', stratTimeframe ?? '1d');
+  params.append('strat_htf', stratHtf ?? 'none');
+  params.append('strat_alignment', stratAlignment ?? 'off');
   
   const url = `http://localhost:8000/midas/backtest/sessions/by_date/${referenceDate}${params.toString() ? `?${params.toString()}` : ''}`;
   const res = await fetch(url);

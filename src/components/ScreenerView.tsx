@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, createSearchParams } from 'react-router-dom';
 import TickerDetailView from './TickerDetailView.tsx';
 import { fetchStockScreener, doPaperTransaction} from '../services/api.tsx';
 import './css/Dashboard.css';
 import './css/ScreenerView.css';
 import './css/spinner.css';
+import { downloadCsvFile, rowsToCsvString } from '../utils/csvExport.js';
 
 interface ScreenerResult {
   ticker: string;
@@ -27,6 +28,13 @@ interface ScreenerResult {
   };
   overall_signal: string;
   overall_score: number;
+  strat_scenario?: string | null;
+  strat_pattern?: string | null;
+  strat_signal?: string | null;
+  strat_score?: number | null;
+  strat_bar_timeframe?: string | null;
+  strat_htf_scenario?: string | null;
+  strat_aligned?: boolean | null;
   volume_avg_30d: number;
   last_updated: string;
 }
@@ -45,13 +53,43 @@ interface ScreenerFilters {
   max_adr: number;
   min_rsi: number;
   max_rsi: number;
-  sort_by: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m';
+  sort_by: 'adr' | 'rsi' | 'performance_1m' | 'performance_3m' | 'performance_6m' | 'strat_score';
   sort_order: 'asc' | 'desc';
   limit: number;
+  signal_method: 'indicators' | 'the_strat';
+  strat_timeframe: '1h' | '4h' | '1d' | '1w';
+  strat_htf: 'none' | '1h' | '4h' | '1d' | '1w';
+  strat_alignment: 'off' | 'info' | 'strict';
+  common_stock_only: boolean;
+  exclude_thin_books: boolean;
+  min_avg_share_volume: number;
+  min_avg_dollar_volume: number;
+}
+
+const STRAT_TF_RANK: Record<string, number> = { '1h': 1, '4h': 2, '1d': 3, '1w': 4 };
+
+function normalizeStratHtf(ltf: string, htf: string): 'none' | '1h' | '4h' | '1d' | '1w' {
+  if (htf === 'none') return 'none';
+  const lr = STRAT_TF_RANK[ltf] ?? 3;
+  const hr = STRAT_TF_RANK[htf] ?? 0;
+  if (hr <= lr) return 'none';
+  return htf as '1h' | '4h' | '1d' | '1w';
+}
+
+function htfChoicesForLtf(ltf: string) {
+  const lr = STRAT_TF_RANK[ltf] ?? 3;
+  const rows: { value: string; label: string }[] = [{ value: 'none', label: 'None' }];
+  (['1h', '4h', '1d', '1w'] as const).forEach((tf) => {
+    if (STRAT_TF_RANK[tf] > lr) {
+      const label = tf === '1h' ? '1 hour' : tf === '4h' ? '4 hour' : tf === '1d' ? 'Daily' : 'Weekly';
+      rows.push({ value: tf, label });
+    }
+  });
+  return rows;
 }
 
 const ScreenerView = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [screenerResults, setScreenerResults] = useState<ScreenerResult[]>([]);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -109,7 +147,15 @@ const ScreenerView = () => {
     max_rsi: 100,
     sort_by: 'adr',
     sort_order: 'desc',
-    limit: 50
+    limit: 50,
+    signal_method: 'indicators',
+    strat_timeframe: '1d',
+    strat_htf: 'none',
+    strat_alignment: 'off',
+    common_stock_only: false,
+    exclude_thin_books: false,
+    min_avg_share_volume: 150000,
+    min_avg_dollar_volume: 500000,
   });
 
   // Check for ticker in URL params on component mount
@@ -150,9 +196,51 @@ const ScreenerView = () => {
     setRefreshing(false);
   };
 
-  const handleTickerClick = (ticker: string) => {
-    setSelectedTicker(ticker);
-    setSearchParams({ ticker });
+  const handleExportCsv = () => {
+    if (!screenerResults.length) return;
+    const headers = [
+      'ticker',
+      'current_price',
+      'performance_1m',
+      'performance_3m',
+      'performance_6m',
+      'adr_percentage',
+      'rsi',
+      'overall_signal',
+      'overall_score',
+      'strat_scenario',
+      'strat_pattern',
+      'strat_signal',
+      'strat_score',
+      'strat_bar_timeframe',
+      'last_updated',
+    ];
+    const rows = screenerResults.map((r) => [
+      r.ticker,
+      r.current_price,
+      r.performance_1m,
+      r.performance_3m,
+      r.performance_6m,
+      r.adr_percentage,
+      r.rsi,
+      r.overall_signal,
+      r.overall_score,
+      r.strat_scenario ?? '',
+      r.strat_pattern ?? '',
+      r.strat_signal ?? '',
+      r.strat_score ?? '',
+      r.strat_bar_timeframe ?? '',
+      r.last_updated,
+    ]);
+    const csv = rowsToCsvString(headers, rows);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    downloadCsvFile(`midas-screener-${stamp}.csv`, csv);
+  };
+
+  const openFullAnalysisInNewTab = (ticker: string) => {
+    const qs = createSearchParams({ ticker }).toString();
+    const url = `${window.location.origin}/screener?${qs}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Calculate suggested stop loss and take profit based on ADR or default percentages
@@ -746,7 +834,15 @@ const ScreenerView = () => {
       max_rsi: 100,
       sort_by: 'adr',
       sort_order: 'desc',
-      limit: 50
+      limit: 50,
+      signal_method: 'indicators',
+      strat_timeframe: '1d',
+      strat_htf: 'none',
+      strat_alignment: 'off',
+      common_stock_only: false,
+      exclude_thin_books: false,
+      min_avg_share_volume: 150000,
+      min_avg_dollar_volume: 500000,
     });
   };
 
@@ -830,6 +926,51 @@ const ScreenerView = () => {
                   onChange={(e) => handleFilterChange('max_price', parseFloat(e.target.value) || 100)}
                 />
               </div>
+            </div>
+
+            {/* Instrument & liquidity */}
+            <div className="filter-group filter-group-instrument">
+              <label>Instrument &amp; liquidity:</label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.common_stock_only}
+                  onChange={(e) => handleFilterChange('common_stock_only', e.target.checked)}
+                />
+                Common stock only (CS)
+              </label>
+              <span className="filter-hint">Excludes warrants, rights, units, and warrant-like tickers</span>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.exclude_thin_books}
+                  onChange={(e) => handleFilterChange('exclude_thin_books', e.target.checked)}
+                />
+                Exclude thin books
+              </label>
+              {filters.exclude_thin_books && (
+                <div className="range-inputs liquidity-inputs">
+                  <input
+                    type="number"
+                    title="Min 30-day avg share volume"
+                    placeholder="Min shares/day"
+                    value={filters.min_avg_share_volume}
+                    onChange={(e) =>
+                      handleFilterChange('min_avg_share_volume', parseInt(e.target.value, 10) || 0)
+                    }
+                  />
+                  <input
+                    type="number"
+                    title="Min 30-day avg dollar volume"
+                    placeholder="Min $/day"
+                    value={filters.min_avg_dollar_volume}
+                    onChange={(e) =>
+                      handleFilterChange('min_avg_dollar_volume', parseFloat(e.target.value) || 0)
+                    }
+                  />
+                </div>
+              )}
+              <span className="filter-hint">Default liquidity: 150k shares/day and $500k/day when enabled</span>
             </div>
 
             {/* Performance Filters */}
@@ -930,6 +1071,92 @@ const ScreenerView = () => {
               </div>
             </div>
 
+            {/* Signal engine */}
+            <div className="filter-group">
+              <label>Signal / strategy:</label>
+              <select
+                value={filters.signal_method}
+                onChange={(e) => {
+                  const v = e.target.value as 'indicators' | 'the_strat';
+                  setFilters(prev => ({
+                    ...prev,
+                    signal_method: v,
+                    sort_by: v === 'the_strat' && prev.sort_by === 'adr' ? 'strat_score' : prev.sort_by,
+                  }));
+                }}
+              >
+                <option value="indicators">Technical stack (MACD, RSI, SO, momentum)</option>
+                <option value="the_strat">The Strat (Rob Smith) — 1 / 2U / 2D / 3</option>
+              </select>
+            </div>
+
+            {filters.signal_method === 'the_strat' && (
+              <>
+                <div className="filter-group">
+                  <label>Strat bar timeframe:</label>
+                  <select
+                    value={filters.strat_timeframe}
+                    onChange={(e) => {
+                      const ltf = e.target.value as ScreenerFilters['strat_timeframe'];
+                      setFilters((prev) => ({
+                        ...prev,
+                        strat_timeframe: ltf,
+                        strat_htf: normalizeStratHtf(ltf, prev.strat_htf),
+                      }));
+                    }}
+                  >
+                    <option value="1h">1 hour</option>
+                    <option value="4h">4 hour</option>
+                    <option value="1d">Daily</option>
+                    <option value="1w">Weekly</option>
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label>Higher timeframe (trend):</label>
+                  <select
+                    value={filters.strat_htf}
+                    onChange={(e) =>
+                      setFilters((prev) => {
+                        const nh = e.target.value as ScreenerFilters['strat_htf'];
+                        const nextAlign =
+                          nh === 'none'
+                            ? 'off'
+                            : prev.strat_alignment === 'off'
+                              ? 'info'
+                              : prev.strat_alignment;
+                        return { ...prev, strat_htf: nh, strat_alignment: nextAlign };
+                      })
+                    }
+                  >
+                    {htfChoicesForLtf(filters.strat_timeframe).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="filter-group">
+                  <label>HTF alignment:</label>
+                  <select
+                    value={filters.strat_htf === 'none' ? 'off' : filters.strat_alignment === 'off' ? 'info' : filters.strat_alignment}
+                    onChange={(e) =>
+                      handleFilterChange('strat_alignment', e.target.value as ScreenerFilters['strat_alignment'])
+                    }
+                    disabled={filters.strat_htf === 'none'}
+                  >
+                    {filters.strat_htf === 'none' ? (
+                      <option value="off">N/A (no higher TF)</option>
+                    ) : (
+                      <>
+                        <option value="info">Show HTF + aligned flag (no filter)</option>
+                        <option value="strict">Require same direction as HTF</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </>
+            )}
+
             {/* Sort Options */}
             <div className="filter-group">
               <label>Sort By:</label>
@@ -942,6 +1169,7 @@ const ScreenerView = () => {
                 <option value="performance_1m">1M Performance</option>
                 <option value="performance_3m">3M Performance</option>
                 <option value="performance_6m">6M Performance</option>
+                <option value="strat_score">Strat score</option>
               </select>
             </div>
 
@@ -989,6 +1217,15 @@ const ScreenerView = () => {
               disabled={refreshing}
             >
               {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              type="button"
+              className="reset-button"
+              onClick={handleExportCsv}
+              disabled={!screenerResults.length || loading}
+              title="Download current results as CSV"
+            >
+              Export CSV
             </button>
           </div>
         </div>
@@ -1378,6 +1615,12 @@ const ScreenerView = () => {
                       <th>ADR %</th>
                       <th>RSI</th>
                       <th>Signal</th>
+                      <th>
+                        Strat
+                        <span style={{ fontWeight: 'normal', fontSize: '11px', display: 'block', color: 'var(--text-muted)' }}>
+                          {filters.signal_method === 'the_strat' ? filters.strat_timeframe : '1d'}
+                        </span>
+                      </th>
                       <th>Score</th>
                     </tr>
                   </thead>
@@ -1431,11 +1674,24 @@ const ScreenerView = () => {
                           <td className={`signal ${item.overall_signal.toLowerCase()}`}>
                             {item.overall_signal}
                           </td>
+                          <td
+                            title={
+                              [
+                                item.strat_pattern,
+                                item.strat_htf_scenario != null ? `HTF: ${item.strat_htf_scenario}` : '',
+                                item.strat_aligned != null ? `Aligned: ${item.strat_aligned}` : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' | ') || undefined
+                            }
+                          >
+                            {item.strat_scenario ?? '—'}
+                          </td>
                           <td>{item.overall_score.toFixed(2)}</td>
                         </tr>
                         {expandedResults[item.ticker] && (
                           <tr className="expanded-table-row">
-                            <td colSpan={11}>
+                            <td colSpan={12}>
                               <div className="table-expanded-content">
                                 <div className="detail-grid">
                                   <div className="detail-item">
@@ -1693,8 +1949,12 @@ const ScreenerView = () => {
                                 </div>
                                 <div className="action-buttons">
                                   <button 
+                                    type="button"
                                     className="view-details-button"
-                                    onClick={() => handleTickerClick(item.ticker)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openFullAnalysisInNewTab(item.ticker);
+                                    }}
                                   >
                                     View Full Analysis
                                   </button>
@@ -1731,7 +1991,7 @@ const ScreenerView = () => {
               <div key={index} className="result-card">
                 <div 
                   className={`recent-item ${selectedTicker === item.ticker ? 'active' : ''}`}
-                  onClick={() => handleTickerClick(item.ticker)}
+                  onClick={() => openFullAnalysisInNewTab(item.ticker)}
                 >
                   <span className="ticker">{item.ticker}</span>
                   <span className="price">${item.current_price.toFixed(2)}</span>
@@ -1796,8 +2056,12 @@ const ScreenerView = () => {
                     </div>
                     <div className="action-buttons">
                       <button 
+                        type="button"
                         className="view-details-button"
-                        onClick={() => handleTickerClick(item.ticker)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFullAnalysisInNewTab(item.ticker);
+                        }}
                       >
                         View Full Analysis
                       </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './Portfolio.css';
 import TechnicalIndicator from '../../components/TechnicalIndicator.tsx';
 import StockChart from '../../components/Chart.tsx';
@@ -8,6 +8,7 @@ import {
   doPaperTransaction,
   fetchIndicatorData 
 } from '../../services/api.tsx';
+import { downloadCsvFile, rowsToCsvString } from '../../utils/csvExport.js';
 
 interface Position {
   ticker: string;
@@ -53,6 +54,11 @@ const Portfolio = () => {
     showInput: boolean;
   }}>({});
 
+  const [sizeEquity, setSizeEquity] = useState('');
+  const [sizeRiskPct, setSizeRiskPct] = useState('1');
+  const [sizeEntry, setSizeEntry] = useState('');
+  const [sizeStop, setSizeStop] = useState('');
+
   const loadPortfolio = async (showLoading: boolean = false) => {
     if (showLoading) {
       setLoading(true);
@@ -82,6 +88,71 @@ const Portfolio = () => {
     const interval = setInterval(() => loadPortfolio(false), 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (account) {
+      setSizeEquity((prev) => (prev === '' ? String(account.total_portfolio_value) : prev));
+    }
+  }, [account]);
+
+  const positionSizePreview = useMemo(() => {
+    const equityNum = parseFloat(sizeEquity) || 0;
+    const riskPctNum = parseFloat(sizeRiskPct) || 0;
+    const riskBudget = equityNum * (riskPctNum / 100);
+    const hasBoth = sizeEntry.trim() !== '' && sizeStop.trim() !== '';
+    if (!hasBoth) {
+      return {
+        shares: 0,
+        riskBudget,
+        actualRisk: 0,
+        perShare: 0,
+        invalid: false,
+        show: false,
+      };
+    }
+    const entryNum = parseFloat(sizeEntry);
+    const stopNum = parseFloat(sizeStop);
+    const e = Number.isFinite(entryNum) ? entryNum : 0;
+    const s = Number.isFinite(stopNum) ? stopNum : 0;
+    const perShare = Math.abs(e - s);
+    if (perShare <= 0) {
+      return { shares: 0, riskBudget, actualRisk: 0, perShare, invalid: true, show: true };
+    }
+    const shares = Math.floor(riskBudget / perShare);
+    const actualRisk = shares * perShare;
+    return { shares, riskBudget, actualRisk, perShare, invalid: false, show: true };
+  }, [sizeEquity, sizeRiskPct, sizeEntry, sizeStop]);
+
+  const handleExportPositionsCsv = () => {
+    if (!positions.length) return;
+    const headers = [
+      'ticker',
+      'shares',
+      'entry_price',
+      'current_price',
+      'position_value',
+      'unrealized_pnl',
+      'unrealized_pnl_percent',
+      'stop_loss',
+      'take_profit',
+      'date_purchased',
+    ];
+    const rows = positions.map((p) => [
+      p.ticker,
+      p.shares,
+      p.entry_price,
+      p.current_price,
+      p.position_value,
+      p.unrealized_pnl,
+      p.unrealized_pnl_percent,
+      p.stop_loss ?? '',
+      p.take_profit ?? '',
+      p.date_purchased ?? '',
+    ]);
+    const csv = rowsToCsvString(headers, rows);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    downloadCsvFile(`midas-paper-positions-${stamp}.csv`, csv);
+  };
 
   const handleRowClick = async (ticker: string) => {
     setExpandedRows((prev) => ({
@@ -162,65 +233,129 @@ const Portfolio = () => {
   };
 
   if (loading) {
-    return <div className="trade-recommendations-container"><p>Loading portfolio...</p></div>;
+    return (
+      <div className="trade-recommendations-container portfolio-loading">
+        <p>Loading portfolio…</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="trade-recommendations-container"><p>Error: {error}</p></div>;
+    return (
+      <div className="trade-recommendations-container portfolio-error">
+        <p>Error: {error}</p>
+      </div>
+    );
   }
 
   return (
     <div className="trade-recommendations-container">
       <div style={{ marginBottom: '20px' }}>
-        <h2>Paper Trading Portfolio</h2>
+        <div className="portfolio-page-header">
+          <h2>Paper Trading Portfolio</h2>
+          {positions.length > 0 && (
+            <button type="button" onClick={handleExportPositionsCsv}>
+              Export positions (CSV)
+            </button>
+          )}
+        </div>
         {account && (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '15px',
-            marginBottom: '20px',
-            padding: '15px',
-            backgroundColor: '#f5f5f5',
-            borderRadius: '8px'
-          }}>
+          <div className="portfolio-stats-grid">
             <div>
-              <strong>Starting Capital:</strong><br />
+              <strong>Starting Capital</strong>
               ${account.starting_capital.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div>
-              <strong>Cash Balance:</strong><br />
+              <strong>Cash Balance</strong>
               ${account.cash_balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div>
-              <strong>Portfolio Value:</strong><br />
+              <strong>Portfolio Value</strong>
               ${account.total_portfolio_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div>
-              <strong>Total P&L:</strong><br />
-              <span style={{ 
-                color: account.total_pnl >= 0 ? '#00ff00' : '#ff0000',
-                fontWeight: 'bold'
-              }}>
-                ${account.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
+              <strong>Total P&amp;L</strong>
+              <span className={account.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
+                ${account.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 ({account.total_return_percent.toFixed(2)}%)
               </span>
             </div>
             <div>
-              <strong>Unrealized P&L:</strong><br />
-              <span style={{ 
-                color: account.unrealized_pnl >= 0 ? '#00ff00' : '#ff0000'
-              }}>
+              <strong>Unrealized P&amp;L</strong>
+              <span className={account.unrealized_pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
                 ${account.unrealized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div>
-              <strong>Realized P&L:</strong><br />
-              <span style={{ 
-                color: account.realized_pnl >= 0 ? '#00ff00' : '#ff0000'
-              }}>
+              <strong>Realized P&amp;L</strong>
+              <span className={account.realized_pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
                 ${account.realized_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
+          </div>
+        )}
+
+        {account && (
+          <div className="portfolio-calculator-panel">
+            <h3>Position size calculator</h3>
+            <p>
+              Size a new position from a risk percent of equity and the distance to your stop. Does not validate cash or margin.
+            </p>
+            <div className="portfolio-calculator-grid">
+              <label className="portfolio-field-label">
+                Equity ($)
+                <input
+                  type="number"
+                  value={sizeEquity}
+                  onChange={(e) => setSizeEquity(e.target.value)}
+                  min={0}
+                  step="any"
+                />
+              </label>
+              <label className="portfolio-field-label">
+                Risk (% of equity)
+                <input
+                  type="number"
+                  value={sizeRiskPct}
+                  onChange={(e) => setSizeRiskPct(e.target.value)}
+                  min={0}
+                  step="any"
+                />
+              </label>
+              <label className="portfolio-field-label">
+                Entry ($)
+                <input
+                  type="number"
+                  value={sizeEntry}
+                  onChange={(e) => setSizeEntry(e.target.value)}
+                  min={0}
+                  step="any"
+                />
+              </label>
+              <label className="portfolio-field-label">
+                Stop ($)
+                <input
+                  type="number"
+                  value={sizeStop}
+                  onChange={(e) => setSizeStop(e.target.value)}
+                  min={0}
+                  step="any"
+                />
+              </label>
+            </div>
+            {positionSizePreview.invalid && (
+              <p className="portfolio-calc-error">
+                Entry and stop must differ to compute share count.
+              </p>
+            )}
+            {positionSizePreview.show && !positionSizePreview.invalid && (
+              <p className="portfolio-calc-result">
+                <strong>Suggested shares:</strong> {positionSizePreview.shares.toLocaleString()} &nbsp;|&nbsp;
+                <strong>Risk at stop (~):</strong> $
+                {positionSizePreview.actualRisk.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                (budget ${positionSizePreview.riskBudget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -247,80 +382,77 @@ const Portfolio = () => {
           <tbody>
             {positions.map((position) => (
               <React.Fragment key={position.ticker}>
-                <tr onClick={() => handleRowClick(position.ticker)} style={{ cursor: 'pointer' }}>
+                <tr onClick={() => handleRowClick(position.ticker)} className="portfolio-row-click">
                   <td><strong>{position.ticker}</strong></td>
                   <td>{position.shares}</td>
                   <td>${position.entry_price.toFixed(2)}</td>
                   <td>${position.current_price.toFixed(2)}</td>
                   <td>${position.position_value.toFixed(2)}</td>
-                  <td style={{ 
-                    color: position.unrealized_pnl >= 0 ? '#00ff00' : '#ff0000',
-                    fontWeight: 'bold'
-                  }}>
+                  <td className={position.unrealized_pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}>
                     ${position.unrealized_pnl.toFixed(2)} ({position.unrealized_pnl_percent.toFixed(2)}%)
                   </td>
                   <td>{position.stop_loss ? `$${position.stop_loss.toFixed(2)}` : '—'}</td>
                   <td>{position.take_profit ? `$${position.take_profit.toFixed(2)}` : '—'}</td>
                   <td>{position.date_purchased ? new Date(position.date_purchased).toLocaleDateString() : '—'}</td>
-                  <td style={{ 
-                    color: position.days_to_close_window !== null && position.days_to_close_window <= 7 ? '#ff4444' : 
-                           position.days_to_close_window !== null && position.days_to_close_window <= 14 ? '#ffaa00' : 
-                           'var(--text-primary)'
-                  }}>
+                  <td
+                    className={
+                      position.days_to_close_window !== null && position.days_to_close_window <= 7
+                        ? 'pnl-negative'
+                        : position.days_to_close_window !== null && position.days_to_close_window <= 14
+                          ? 'pnl-warn'
+                          : ''
+                    }
+                  >
                     {position.days_to_close_window !== null ? position.days_to_close_window : '—'}
                   </td>
                   <td onClick={(e) => e.stopPropagation()}>
                     {transactionData[position.ticker]?.showInput ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div className="portfolio-actions-stack">
                         <input
                           type="number"
                           placeholder="Shares"
                           value={transactionData[position.ticker].shares}
                           onChange={(e) => handleTransactionInputChange(position.ticker, 'shares', e.target.value)}
-                          style={{ width: '80px' }}
                         />
                         <input
                           type="number"
                           placeholder="Stop Loss (opt)"
                           value={transactionData[position.ticker].stopLoss}
                           onChange={(e) => handleTransactionInputChange(position.ticker, 'stopLoss', e.target.value)}
-                          style={{ width: '100px' }}
                         />
                         <input
                           type="number"
                           placeholder="Take Profit (opt)"
                           value={transactionData[position.ticker].takeProfit}
                           onChange={(e) => handleTransactionInputChange(position.ticker, 'takeProfit', e.target.value)}
-                          style={{ width: '100px' }}
                         />
-                        <button 
-                          onClick={() => handleExecuteTransaction(position)}
-                          style={{ padding: '5px 10px', cursor: 'pointer' }}
-                        >
+                        <button type="button" onClick={() => handleExecuteTransaction(position)}>
                           {transactionData[position.ticker].type === 'buy' ? 'Buy' : 'Sell'}
                         </button>
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => setTransactionData((prev) => {
                             const newData = { ...prev };
                             delete newData[position.ticker];
                             return newData;
                           })}
-                          style={{ padding: '5px 10px', cursor: 'pointer' }}
                         >
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button 
+                      <div className="portfolio-actions-row">
+                        <button
+                          type="button"
+                          className="btn-trade-buy"
                           onClick={() => handleTransactionClick(position.ticker, 'buy', position.current_price)}
-                          style={{ padding: '5px 10px', cursor: 'pointer', backgroundColor: '#00ff00' }}
                         >
                           Buy
                         </button>
-                        <button 
+                        <button
+                          type="button"
+                          className="btn-trade-sell"
                           onClick={() => handleTransactionClick(position.ticker, 'sell', position.current_price)}
-                          style={{ padding: '5px 10px', cursor: 'pointer', backgroundColor: '#ff0000', color: 'white' }}
                         >
                           Sell
                         </button>

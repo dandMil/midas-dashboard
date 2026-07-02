@@ -1,251 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchDailySummary, fetchCryptoSummary, purchaseAsset, sellAsset, /* NEW: */ fetchAssetVolume } from '../services/api.tsx';
+import {
+  fetchDailySummary,
+  fetchCryptoSummary,
+  purchaseAsset,
+  sellAsset,
+  fetchAssetVolume,
+  type VolumeBarPoint,
+} from '../services/api.tsx';
 import TechnicalAnalysis from './TechnicalAnalysis.tsx';
+import VolumeChart from './VolumeChart.tsx';
 import './css/spinner.css';
 import './css/DailySummary.css';
-
-type VolumePoint = { date: string; volume: number };
-
-
-const VolumeChart: React.FC<{ data: VolumePoint[]; width?: number; height?: number }> = ({
-  data,
-  width = 720,
-  height = 240,
-}) => {
-  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; data: VolumePoint } | null>(null);
-  const margin = { top: 10, right: 12, bottom: 24, left: 44 };
-  const innerW = width - margin.left - margin.right;
-  const innerH = height - margin.top - margin.bottom;
-
-  const {
-    xs,
-    ys,
-    pathD,
-    minVol,
-    maxVol,
-    tickEvery,
-  } = useMemo(() => {
-    const n = data.length;
-    const vols = data.map(d => d.volume);
-    const minVol = Math.min(...vols, 0);
-    const maxVol = Math.max(...vols, 1);
-    const yRange = Math.max(1, maxVol - minVol);
-
-    // x positions (even spacing by index)
-    const xs = data.map((_, i) => {
-      if (n === 1) return margin.left + innerW / 2;
-      return margin.left + (i * innerW) / (n - 1);
-    });
-
-    // y scale (invert because SVG y grows downward)
-    const ys = data.map(d => {
-      const t = (d.volume - minVol) / yRange; // 0..1
-      return margin.top + (1 - t) * innerH;
-    });
-
-    // Build simple polyline path: M x0 y0 L x1 y1 ...
-    let pathD = '';
-    if (n > 0) {
-      pathD = `M ${xs[0]} ${ys[0]}`;
-      for (let i = 1; i < n; i++) pathD += ` L ${xs[i]} ${ys[i]}`;
-    }
-
-    // ~6 x-ticks
-    const tickEvery = Math.max(1, Math.floor((n || 1) / 6));
-
-    return { xs, ys, pathD, minVol, maxVol, tickEvery };
-  }, [data, innerW, innerH, margin.left, margin.top]);
-
-  return (
-    <svg width={width} height={height} role="img" aria-label="Volume line chart">
-      {/* Axes */}
-      <line
-        x1={margin.left}
-        y1={margin.top}
-        x2={margin.left}
-        y2={margin.top + innerH}
-        stroke="var(--border-primary)"
-        strokeWidth={1}
-      />
-      <line
-        x1={margin.left}
-        y1={margin.top + innerH}
-        x2={margin.left + innerW}
-        y2={margin.top + innerH}
-        stroke="var(--border-primary)"
-        strokeWidth={1}
-      />
-
-      {/* Optional horizontal gridlines (quartiles) */}
-      {Array.from({ length: 3 }).map((_, i) => {
-        const y = margin.top + ((i + 1) * innerH) / 4;
-        return (
-          <line
-            key={`grid-${i}`}
-            x1={margin.left}
-            x2={margin.left + innerW}
-            y1={y}
-            y2={y}
-            stroke="var(--border-secondary)"
-            strokeWidth={1}
-            opacity={0.3}
-          />
-        );
-      })}
-
-      {/* Line path */}
-      {data.length > 0 && (
-        <path
-          d={pathD}
-          fill="none"
-          stroke="var(--accent-primary)"
-          strokeWidth={2}
-          style={{ 
-            transition: 'stroke-width 0.2s ease',
-            strokeWidth: hoveredPoint ? 3 : 2
-          }}
-        />
-      )}
-
-      {/* Points with hover functionality */}
-      {data.map((d, i) => (
-        <g key={i}>
-          {/* Invisible larger hit area for better hover detection */}
-          <circle 
-            cx={xs[i]} 
-            cy={ys[i]} 
-            r={8} 
-            fill="transparent"
-            onMouseEnter={() => setHoveredPoint({ x: xs[i], y: ys[i], data: d })}
-            onMouseLeave={() => setHoveredPoint(null)}
-            style={{ cursor: 'pointer' }}
-          />
-          {/* Visible point */}
-          <circle 
-            cx={xs[i]} 
-            cy={ys[i]} 
-            r={hoveredPoint?.data === d ? 4 : 2.5} 
-            fill={hoveredPoint?.data === d ? "var(--accent-primary)" : "var(--accent-secondary)"}
-            stroke={hoveredPoint?.data === d ? "var(--text-primary)" : "none"}
-            strokeWidth={hoveredPoint?.data === d ? 1 : 0}
-            style={{ 
-              transition: 'all 0.2s ease',
-              filter: hoveredPoint?.data === d ? 'drop-shadow(0 0 6px var(--accent-glow))' : 'none'
-            }}
-          />
-        </g>
-      ))}
-
-      {/* Hover tooltip */}
-      {hoveredPoint && (
-        <g className="tooltip">
-          {/* Calculate tooltip position to avoid going off-screen */}
-          {(() => {
-            const tooltipWidth = 120;
-            const tooltipHeight = 50;
-            const padding = 10;
-            
-            // Calculate x position
-            let tooltipX = hoveredPoint.x + padding;
-            if (tooltipX + tooltipWidth > width - margin.right) {
-              tooltipX = hoveredPoint.x - tooltipWidth - padding;
-            }
-            
-            // Calculate y position
-            let tooltipY = hoveredPoint.y - tooltipHeight - padding;
-            if (tooltipY < margin.top) {
-              tooltipY = hoveredPoint.y + padding;
-            }
-            
-            const textOffsetX = tooltipX + 5;
-            const textOffsetY = tooltipY + 15;
-            
-            return (
-              <>
-                {/* Tooltip background */}
-                <rect
-                  x={tooltipX}
-                  y={tooltipY}
-                  width={tooltipWidth}
-                  height={tooltipHeight}
-                  fill="var(--bg-tertiary)"
-                  stroke="var(--border-accent)"
-                  strokeWidth={1}
-                  rx={4}
-                  ry={4}
-                  opacity={0.95}
-                  style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
-                />
-                {/* Date text */}
-                <text
-                  x={textOffsetX}
-                  y={textOffsetY}
-                  fontSize="10"
-                  fill="var(--text-primary)"
-                  fontFamily="var(--font-family-primary)"
-                  fontWeight="600"
-                >
-                  {new Date(hoveredPoint.data.date).toLocaleDateString()}
-                </text>
-                {/* Volume text */}
-                <text
-                  x={textOffsetX}
-                  y={textOffsetY + 15}
-                  fontSize="10"
-                  fill="var(--accent-primary)"
-                  fontFamily="var(--font-family-primary)"
-                  fontWeight="600"
-                >
-                  Vol: {hoveredPoint.data.volume.toLocaleString()}
-                </text>
-              </>
-            );
-          })()}
-        </g>
-      )}
-
-      {/* Y-axis labels (min/max) */}
-      <text x={margin.left - 8} y={margin.top + 10} textAnchor="end" fontSize="10" fill="var(--text-muted)">
-        {maxVol.toLocaleString()}
-      </text>
-      <text
-        x={margin.left - 8}
-        y={margin.top + innerH}
-        dy={-2}
-        textAnchor="end"
-        fontSize="10"
-        fill="var(--text-muted)"
-      >
-        {minVol.toLocaleString()}
-      </text>
-
-      {/* X-axis ticks */}
-      {data.map((d, i) =>
-        i % tickEvery === 0 ? (
-          <text
-            key={`tick-${i}`}
-            x={xs[i]}
-            y={margin.top + innerH + 14}
-            fontSize="10"
-            textAnchor="middle"
-            fill="var(--text-muted)"
-          >
-            {new Date(d.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
-          </text>
-        ) : null
-      )}
-
-      {/* Axes labels */}
-      <text x={width / 2} y={height - 4} textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
-        Date
-      </text>
-      <text x={12} y={margin.top + 12} fontSize="10" fill="var(--text-secondary)">
-        Volume
-      </text>
-    </svg>
-  );
-};
-
 
 
 const DailySummary: React.FC = () => {
@@ -255,7 +20,7 @@ const DailySummary: React.FC = () => {
 
   // NEW: selection + volume state
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-  const [volume, setVolume] = useState<VolumePoint[] | null>(null);
+  const [volume, setVolume] = useState<VolumeBarPoint[] | null>(null);
   const [volumeLoading, setVolumeLoading] = useState(false);
   const [volumeError, setVolumeError] = useState<string | null>(null);
 
@@ -390,7 +155,7 @@ const DailySummary: React.FC = () => {
     setVolumeLoading(true);
     try {
       // implement fetchAssetVolume in ../services/api.tsx
-      const data: VolumePoint[] = await fetchAssetVolume(ticker, '1M'); // e.g., last month
+      const data = await fetchAssetVolume(ticker, '1M'); // e.g., last month
       setVolume(data);
     } catch (e: any) {
       console.error('Failed to load volume:', e);
@@ -661,7 +426,7 @@ const DailySummary: React.FC = () => {
                             )}
                             {!volumeLoading && !volumeError && volume && volume.length > 0 && (
                               <div className="inline-volume-chart-wrapper">
-                                <VolumeChart data={volume} width={800} height={200} />
+                                <VolumeChart data={volume} width={800} height={360} rangeKey="1M" />
                               </div>
                             )}
                             {!volumeLoading && !volumeError && volume && volume.length === 0 && (

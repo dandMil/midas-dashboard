@@ -1,53 +1,198 @@
-/* TradeRecommendations.css */
+/* Paper portfolio — matches global green-on-black theme */
 .trade-recommendations-container {
-    margin: 20px;
-  }
-  
-  .trade-recommendations-table {
-    width: 80%; /* Set table width to 80% */
-    margin-left: 10%; /* Slightly shift the table to the left */
-    border-collapse: collapse;
-    background-color: #000; /* Black background */
-    color: #66ff66; /* Green text color */
-  }
-  
-  .trade-recommendations-table th,
-  .trade-recommendations-table td {
-    padding: 8px;
-    text-align: left;
-    border: 1px solid #66ff66; /* Green border */
-  }
-  
-  .trade-recommendations-table th {
-    background-color: #333; /* Darker background for headers */
-    color: #66ff66; /* Green text color */
-  }
-  
-  .trade-recommendations-table tr:nth-child(even) {
-    background-color: #222; /* Dark background for even rows */
-  }
-  
-  .trade-recommendations-table tr:nth-child(odd) {
-    background-color: #000; /* Black background for odd rows */
-  }
-  
-  .trade-recommendations-table tr:hover {
-    background-color: #333; /* Darker background on hover */
-  }
-  
-  .trade-recommendations-table th,
-  .trade-recommendations-table td {
-    color: #66ff66; /* Green text color */
-  }
-  
-  .trade-recommendations-table th:hover,
-  .trade-recommendations-table td:hover {
-    color: #fff; /* White text color on hover */
-  }
-  
-  .trade-recommendations-table .active,
-  .trade-recommendations-table tr:hover {
-    background-color: #333; /* Darker background on hover */
-    color: #fff; /* White text color for active row */
-  }
-  
+  margin: 0 auto;
+  max-width: 1400px;
+  padding: 0 var(--spacing-xs);
+}
+
+.portfolio-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.portfolio-page-header h2 {
+  margin: 0;
+  font-family: var(--font-family-primary);
+  letter-spacing: 0.04em;
+}
+
+.trade-recommendations-table {
+  width: 100%;
+  margin: var(--spacing-md) 0 0 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-glass), 0 0 0 1px rgba(0, 255, 65, 0.05) inset;
+}
+
+.trade-recommendations-table th,
+.trade-recommendations-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.trade-recommendations-table th {
+  background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg-tertiary) 100%);
+  color: var(--text-primary);
+  font-family: var(--font-family-primary);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-accent);
+}
+
+.trade-recommendations-table tr:nth-child(even) td {
+  background: rgba(0, 255, 65, 0.02);
+}
+
+.trade-recommendations-table tr:hover td {
+  background: rgba(0, 255, 65, 0.07);
+}
+
+.trade-recommendations-table th:hover,
+.trade-recommendations-table td:hover {
+  color: var(--text-primary);
+}
+
+.portfolio-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(165deg, rgba(20, 24, 28, 0.9) 0%, rgba(8, 10, 12, 0.95) 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-glass);
+}
+
+.portfolio-stats-grid strong {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-family: var(--font-family-primary);
+}
+
+.portfolio-stats-grid > div {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-calculator-panel {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: linear-gradient(165deg, rgba(16, 20, 24, 0.95) 0%, rgba(6, 8, 10, 0.98) 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-glass);
+}
+
+.portfolio-calculator-panel h3 {
+  margin: 0 0 var(--spacing-sm) 0;
+  font-size: 1rem;
+  font-family: var(--font-family-primary);
+  letter-spacing: 0.04em;
+}
+
+.portfolio-calculator-panel > p {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.portfolio-calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.portfolio-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.portfolio-field-label input {
+  padding: 8px 10px;
+}
+
+.portfolio-calc-error {
+  margin: var(--spacing-sm) 0 0 0;
+  font-size: 0.82rem;
+  color: var(--error-color);
+}
+
+.portfolio-calc-result {
+  margin: var(--spacing-md) 0 0 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+}
+
+.portfolio-row-click {
+  cursor: pointer;
+}
+
+.portfolio-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.portfolio-actions-stack input {
+  width: 100%;
+  max-width: 120px;
+}
+
+.portfolio-actions-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-trade-buy {
+  padding: 6px 12px !important;
+  cursor: pointer;
+  background: linear-gradient(165deg, rgba(0, 255, 65, 0.25) 0%, rgba(0, 180, 60, 0.15) 100%) !important;
+  border-color: rgba(0, 255, 65, 0.45) !important;
+  color: var(--text-primary) !important;
+}
+
+.btn-trade-sell {
+  padding: 6px 12px !important;
+  cursor: pointer;
+  background: linear-gradient(165deg, rgba(255, 68, 102, 0.2) 0%, rgba(180, 30, 50, 0.12) 100%) !important;
+  border-color: rgba(255, 80, 100, 0.45) !important;
+  color: #ff99aa !important;
+}
+
+.btn-trade-sell:hover:not(:disabled) {
+  color: #fff !important;
+}
+
+.portfolio-loading,
+.portfolio-error {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.portfolio-error {
+  color: var(--error-color);
+}

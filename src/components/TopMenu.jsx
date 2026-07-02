@@ -1,10 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getUsMarketSession } from '../utils/usMarketSession.js';
 import './TopMenu.css';
 
 const TopMenu = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef(null);
+  const [marketInfo, setMarketInfo] = useState(() => getUsMarketSession());
+
+  useEffect(() => {
+    const tick = () => setMarketInfo(getUsMarketSession());
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      const tag = t && t.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      e.preventDefault();
+      if (searchInputRef.current) searchInputRef.current.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -18,11 +40,14 @@ const TopMenu = () => {
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch(e);
-    }
-  };
+  const sessionClass =
+    marketInfo.kind === 'regular'
+      ? 'market-session--open'
+      : marketInfo.kind === 'pre_market'
+        ? 'market-session--pre'
+        : marketInfo.kind === 'after_hours'
+          ? 'market-session--ah'
+          : 'market-session--closed';
 
   return (
     <div className="top-menu">
@@ -39,14 +64,23 @@ const TopMenu = () => {
         <button className="nav-button" onClick={() => handleNavigation('/shorts-squeeze')}>Shorts Squeeze</button>
       </div>
       <div className="right-section">
+        <div className={`market-session ${sessionClass}`} title="US cash equity hours (ET). Holidays not modeled.">
+          <span className="market-session__label">{marketInfo.label}</span>
+          <span className="market-session__time">
+            {marketInfo.etTimeLabel} · {marketInfo.etDateLabel}
+          </span>
+        </div>
         <form onSubmit={handleSearch}>
           <input
+            ref={searchInputRef}
             type="text"
             className="search-bar"
-            placeholder="Search ticker symbol..."
+            placeholder="Ticker search… (press /)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSearch(e);
+            }}
           />
         </form>
       </div>

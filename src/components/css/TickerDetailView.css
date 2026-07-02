@@ -288,12 +288,24 @@
 
 .volume-chart-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   padding: var(--spacing-md);
   background-color: var(--bg-primary);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-secondary);
+}
+
+.volume-chart-root {
+  width: 100%;
+  max-width: 100%;
+}
+
+.volume-chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+  display: block;
 }
 
 .volume-loading {
@@ -362,6 +374,18 @@
   color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 500;
+}
+
+.chart-context-hint {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  max-width: 900px;
+}
+
+.price-volume-panel {
+  margin-top: var(--spacing-md);
 }
 
 /* Responsive Design */
